@@ -1,34 +1,35 @@
 // Copyright (c) 2017 Uber Technologies, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Input, Button, Popover, Select, Row, Col, Form, Switch } from 'antd';
+import { Button, Col, Form, Input, Popover, Row, Select, Switch } from 'antd';
+import dayjs from 'dayjs';
 import _get from 'lodash/get';
 import logfmtParser from 'logfmt/lib/logfmt_parser';
 import { stringify as logfmtStringify } from 'logfmt/lib/stringify';
-import dayjs from 'dayjs';
 import memoizeOne from 'memoize-one';
 import queryString from 'query-string';
-import { IoHelp } from 'react-icons/io5';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { IoAdd, IoClose, IoHelp } from 'react-icons/io5';
 import { connect, ConnectedProps } from 'react-redux';
 import { bindActionCreators, Dispatch } from 'redux';
 import store from 'store';
 
-import * as markers from './SearchForm.markers';
-import { trackFormInput } from './SearchForm.track';
 import * as jaegerApiActions from '../../actions/jaeger-api';
-import { formatDate, formatTime } from '../../utils/date';
-import { DEFAULT_OPERATION, DEFAULT_LIMIT, DEFAULT_LOOKBACK } from '../../constants/search-form';
-import { getConfigValue } from '../../utils/config/get-config';
-import SearchableSelect from '../common/SearchableSelect';
-import './SearchForm.css';
-import ValidatedFormField from '../../utils/ValidatedFormField';
-import LoadingIndicator from '../common/LoadingIndicator';
+import { jaegerClient } from '../../api/v3/client';
+import { fetchedState } from '../../constants';
+import { DEFAULT_LIMIT, DEFAULT_LOOKBACK, DEFAULT_OPERATION } from '../../constants/search-form';
 import { useConfig } from '../../hooks/useConfig';
 import { useServices, useSpanNames } from '../../hooks/useTraceDiscovery';
 import { ReduxState } from '../../types';
 import { SearchQuery } from '../../types/search';
-import { fetchedState } from '../../constants';
+import { getConfigValue } from '../../utils/config/get-config';
+import { formatDate, formatTime } from '../../utils/date';
+import ValidatedFormField from '../../utils/ValidatedFormField';
+import LoadingIndicator from '../common/LoadingIndicator';
+import SearchableSelect from '../common/SearchableSelect';
+import './SearchForm.css';
+import * as markers from './SearchForm.markers';
+import { trackFormInput } from './SearchForm.track';
 
 const FormItem = Form.Item;
 const Option = Select.Option;
@@ -263,6 +264,49 @@ interface ISearchFormFields {
   lookback: string;
 }
 
+type TagClause = {
+  key: string;
+  operator: '==' | '!=';
+  value: string;
+};
+
+function parseLogfmtTagsToClauses(tags: string | null | undefined): TagClause[] {
+  if (!tags) {
+    return [{ key: '', operator: '==', value: '' }];
+  }
+  try {
+    const parsed = logfmtParser.parse(tags) as Record<string, unknown>;
+    const clauses = Object.keys(parsed).map(k => ({
+      key: k,
+      operator: '==' as const,
+      value: String(parsed[k]),
+    }));
+    return clauses.length ? clauses : [{ key: '', operator: '==', value: '' }];
+  } catch {
+    return [{ key: '', operator: '==', value: '' }];
+  }
+}
+
+function clausesToLogfmtTags(clauses: TagClause[]): string {
+  const data: Record<string, string> = {};
+  clauses.forEach(c => {
+    const k = c.key.trim();
+    const v = c.value.trim();
+    if (!k || !v) {
+      return;
+    }
+    if (c.operator !== '==') {
+      return;
+    }
+    data[k] = v;
+  });
+  try {
+    return logfmtStringify(data);
+  } catch {
+    return '';
+  }
+}
+
 type SearchTracesFunction = typeof jaegerApiActions.searchTraces;
 
 export function submitForm(
@@ -361,6 +405,15 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
     resultsLimit: initialValues?.resultsLimit,
   }));
 
+  const [tagClauses, setTagClauses] = useState<TagClause[]>(() =>
+    parseLogfmtTagsToClauses(initialValues?.tags)
+  );
+  const [attributeNameOptions, setAttributeNameOptions] = useState<string[]>([]);
+  const [attributeValueSuggestions, setAttributeValueSuggestions] = useState<Record<number, string[]>>({});
+  const [isLoadingAttributeNames, setIsLoadingAttributeNames] = useState(false);
+  const [isLoadingAttributeValues, setIsLoadingAttributeValues] = useState<Record<number, boolean>>({});
+  const [valueSearchTexts, setValueSearchTexts] = useState<Record<number, string>>({});
+
   // Fetch services using React Query
   const { data: services = [], isLoading: isLoadingServices, error: servicesError } = useServices();
 
@@ -395,6 +448,13 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
     });
   }, []);
 
+  const computedTags = useMemo(() => clausesToLogfmtTags(tagClauses), [tagClauses]);
+  useEffect(() => {
+    if ((formData.tags || '') !== computedTags) {
+      handleChange({ tags: computedTags });
+    }
+  }, [computedTags, formData.tags, handleChange]);
+
   const handleAdjustTimeToggle = useCallback((checked: boolean) => {
     setAdjustTimeEnabled(checked);
     store.set(ADJUST_TIME_ENABLED_KEY, checked);
@@ -413,6 +473,138 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
   const tz = selectedLookback === 'custom' ? new Date().toTimeString().replace(/^.*?GMT/, 'UTC') : null;
   const invalidDuration =
     validateDurationFields(formData.minDuration) || validateDurationFields(formData.maxDuration);
+
+  const suggestionQuery = useMemo(() => {
+    if (noSelectedService) {
+      return null;
+    }
+    const lookback = formData.lookback || DEFAULT_LOOKBACK;
+
+    let startMs: number;
+    let endMs: number;
+    if (lookback !== 'custom') {
+      const now = new Date();
+      endMs = now.valueOf();
+      startMs = lookbackToTimestamp(lookback, now) / 1000;
+    } else {
+      if (!formData.startDate || !formData.startDateTime || !formData.endDate || !formData.endDateTime) {
+        return null;
+      }
+      const start = dayjs(`${formData.startDate} ${formData.startDateTime}`, 'YYYY-MM-DD HH:mm');
+      const end = dayjs(`${formData.endDate} ${formData.endDateTime}`, 'YYYY-MM-DD HH:mm');
+      startMs = start.valueOf();
+      endMs = end.valueOf();
+    }
+
+    if (adjustTimeEnabled) {
+      endMs = applyAdjustTime(endMs * 1000, searchAdjustEndTime) / 1000;
+    }
+
+    const operation = formData.operation;
+    return {
+      serviceName: selectedService as string,
+      spanName: operation && operation !== DEFAULT_OPERATION ? operation : undefined,
+      startTimeMin: new Date(startMs).toISOString(),
+      startTimeMax: new Date(endMs).toISOString(),
+      durationMin: formData.minDuration || undefined,
+      durationMax: formData.maxDuration || undefined,
+    };
+  }, [
+    adjustTimeEnabled,
+    formData.endDate,
+    formData.endDateTime,
+    formData.lookback,
+    formData.maxDuration,
+    formData.minDuration,
+    formData.operation,
+    formData.startDate,
+    formData.startDateTime,
+    noSelectedService,
+    searchAdjustEndTime,
+    selectedService,
+  ]);
+
+  useEffect(() => {
+    let canceled = false;
+    async function loadAttributeNames() {
+      if (!suggestionQuery) {
+        setAttributeNameOptions([]);
+        return;
+      }
+      setIsLoadingAttributeNames(true);
+      try {
+        const names = await jaegerClient.fetchAttributeNames(suggestionQuery, 200);
+        if (!canceled) {
+          setAttributeNameOptions(names);
+        }
+      } catch {
+        if (!canceled) {
+          setAttributeNameOptions([]);
+        }
+      } finally {
+        if (!canceled) {
+          setIsLoadingAttributeNames(false);
+        }
+      }
+    }
+    loadAttributeNames();
+    return () => {
+      canceled = true;
+    };
+  }, [suggestionQuery]);
+
+  const clauseKeySignature = useMemo(
+    () => tagClauses.map(c => `${c.key}::${c.operator}`).join('|'),
+    [tagClauses]
+  );
+  useEffect(() => {
+    let canceled = false;
+    async function loadValueSuggestions() {
+      if (!suggestionQuery) {
+        setAttributeValueSuggestions({});
+        setIsLoadingAttributeValues({});
+        return;
+      }
+
+      const initialLoading: Record<number, boolean> = {};
+      tagClauses.forEach((clause, idx) => {
+        if (clause.key && clause.operator === '==') {
+          initialLoading[idx] = true;
+        }
+      });
+      if (!canceled) {
+        setIsLoadingAttributeValues(initialLoading);
+      }
+
+      const nextSuggestions: Record<number, string[]> = {};
+      await Promise.all(
+        tagClauses.map(async (clause, idx) => {
+          if (!clause.key || clause.operator !== '==') {
+            nextSuggestions[idx] = [];
+            return;
+          }
+          try {
+            const [top, bottom] = await Promise.all([
+              jaegerClient.fetchTopKAttributeValues(suggestionQuery, clause.key, 10),
+              jaegerClient.fetchBottomKAttributeValues(suggestionQuery, clause.key, 10),
+            ]);
+            nextSuggestions[idx] = Array.from(new Set([...top, ...bottom]));
+          } catch {
+            nextSuggestions[idx] = [];
+          }
+        })
+      );
+
+      if (!canceled) {
+        setAttributeValueSuggestions(nextSuggestions);
+        setIsLoadingAttributeValues({});
+      }
+    }
+    loadValueSuggestions();
+    return () => {
+      canceled = true;
+    };
+  }, [clauseKeySignature, suggestionQuery, tagClauses]);
 
   if (isLoadingServices && services.length === 0 && !servicesError) {
     return <LoadingIndicator />;
@@ -477,61 +669,14 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
             <Popover
               placement="topLeft"
               trigger="click"
-              title={
-                <h3 key="title" className="SearchForm--tagsHintTitle">
-                  Values should be in the{' '}
-                  <a href="https://brandur.org/logfmt" rel="noopener noreferrer" target="_blank">
-                    logfmt
-                  </a>{' '}
-                  format.
-                </h3>
-              }
               content={
                 <div>
-                  <ul key="info" className="SearchForm--tagsHintInfo">
-                    <li>Use space for AND conjunctions.</li>
-                    <li>
-                      Values containing whitespace or equal-sign &apos;=&apos; should be enclosed in quotes.
-                    </li>
-                    <li>
-                      Elasticsearch/OpenSearch storage supports regex query, therefore{' '}
-                      <a
-                        href="https://lucene.apache.org/core/9_0_0/core/org/apache/lucene/util/automaton/RegExp.html"
-                        rel="noopener noreferrer"
-                        target="_blank"
-                      >
-                        reserved characters
-                      </a>{' '}
-                      need to be escaped for exact match queries.
-                    </li>
-                  </ul>
-                  <p>Examples:</p>
                   <ul className="SearchForm--tagsHintInfo">
-                    <li>
-                      <code className="SearchForm--tagsHintEg">error=true</code>
-                    </li>
-                    <li>
-                      <code className="SearchForm--tagsHintEg">
-                        db.statement=&quot;select * from User&quot;
-                      </code>
-                    </li>
-                    <li>
-                      <code className="SearchForm--tagsHintEg">
-                        http.url=&quot;http://0.0.0.0:8081/customer\\?customer=123&quot;
-                      </code>
-                      <div>
-                        Note: when using Elasticsearch/OpenSearch the{' '}
-                        <a
-                          href="https://lucene.apache.org/core/9_0_0/core/org/apache/lucene/util/automaton/RegExp.html"
-                          rel="noopener noreferrer"
-                          target="_blank"
-                        >
-                          regex-reserved
-                        </a>{' '}
-                        character <code className="SearchForm--tagsHintEg">&quot;?&quot;</code> must be
-                        escaped with <code className="SearchForm--tagsHintEg">&quot;\\&quot;</code>.
-                      </div>
-                    </li>
+                    <li>Add one or more clauses to filter traces by attribute values.</li>
+                    <li>Each clause matches traces where the attribute equals the given value.</li>
+                    <li>Multiple clauses are combined with AND logic.</li>
+                    <li>Start typing an attribute name to see suggestions from recent traces.</li>
+                    <li>Select a suggested value or type a custom one.</li>
                   </ul>
                 </div>
               }
@@ -541,14 +686,114 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
           </div>
         }
       >
-        <Input
-          name="tags"
-          value={formData.tags}
-          disabled={submitting}
-          placeholder="http.status_code=200 error=true"
-          onChange={e => handleChange({ tags: e.target.value })}
-          allowClear
-        />
+        <div>
+          {tagClauses.map((clause, idx) => {
+            const suggestedValues = attributeValueSuggestions[idx] || [];
+            const searchText = valueSearchTexts[idx] ?? '';
+            const customOption =
+              searchText && !suggestedValues.includes(searchText)
+                ? [{ value: searchText, label: searchText }]
+                : [];
+            const valueOptions = [...customOption, ...suggestedValues.map(v => ({ value: v, label: v }))];
+            return (
+              <Row key={`tag-clause-${idx}`} gutter={8} style={{ marginBottom: 8 }}>
+                <Col span={10}>
+                  <SearchableSelect
+                    data-testid={`tag-attribute-${idx + 1}`}
+                    value={clause.key || undefined}
+                    placeholder="Attribute name"
+                    disabled={submitting}
+                    loading={isLoadingAttributeNames}
+                    style={{ width: '100%' }}
+                    allowClear
+                    onChange={(value: string) => {
+                      const next = [...tagClauses];
+                      next[idx] = { ...next[idx], key: String(value) };
+                      setTagClauses(next);
+                    }}
+                    onClear={() => {
+                      const next = [...tagClauses];
+                      next[idx] = { ...next[idx], key: '' };
+                      setTagClauses(next);
+                    }}
+                  >
+                    {attributeNameOptions.map(name => (
+                      <Option key={name} value={name}>
+                        {name}
+                      </Option>
+                    ))}
+                  </SearchableSelect>
+                </Col>
+
+                <Col span={4}>
+                  <Select
+                    value={clause.operator}
+                    disabled={submitting}
+                    style={{ width: '100%' }}
+                    onChange={value => {
+                      const next = [...tagClauses];
+                      next[idx] = { ...next[idx], operator: value };
+                      setTagClauses(next);
+                    }}
+                  >
+                    <Option value="==">=</Option>
+                    <Option value="!=" disabled>
+                      !=
+                    </Option>
+                  </Select>
+                </Col>
+
+                <Col span={8}>
+                  <Select
+                    data-testid={`tag-value-${idx + 1}`}
+                    showSearch
+                    loading={isLoadingAttributeValues[idx]}
+                    value={clause.value || undefined}
+                    placeholder="Value"
+                    style={{ width: '100%' }}
+                    disabled={submitting || !clause.key}
+                    options={valueOptions}
+                    filterOption={false}
+                    allowClear
+                    onSearch={(text: string) => setValueSearchTexts(prev => ({ ...prev, [idx]: text }))}
+                    onChange={(value: string) => {
+                      const next = [...tagClauses];
+                      next[idx] = { ...next[idx], value };
+                      setTagClauses(next);
+                      setValueSearchTexts(prev => ({ ...prev, [idx]: '' }));
+                    }}
+                    onClear={() => {
+                      const next = [...tagClauses];
+                      next[idx] = { ...next[idx], value: '' };
+                      setTagClauses(next);
+                    }}
+                  />
+                </Col>
+
+                <Col span={2}>
+                  <Button
+                    aria-label={`Remove clause ${idx + 1}`}
+                    disabled={submitting || tagClauses.length === 1}
+                    icon={<IoClose />}
+                    onClick={() => {
+                      const next = tagClauses.filter((_, i) => i !== idx);
+                      setTagClauses(next.length ? next : [{ key: '', operator: '==', value: '' }]);
+                    }}
+                  />
+                </Col>
+              </Row>
+            );
+          })}
+
+          <Button
+            aria-label="Add clause"
+            disabled={submitting}
+            onClick={() => setTagClauses([...tagClauses, { key: '', operator: '==', value: '' }])}
+            icon={<IoAdd />}
+          >
+            Add clause
+          </Button>
+        </div>
       </FormItem>
 
       <div className="SearchForm--lookbackRow">

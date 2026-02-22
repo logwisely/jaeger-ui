@@ -36,14 +36,20 @@ jest.mock('../../hooks/useTraceDiscovery', () => ({
   })),
 }));
 
-import React from 'react';
-import { render, fireEvent, waitFor, cleanup } from '@testing-library/react';
-import { act } from 'react';
+jest.mock('../../api/v3/client', () => ({
+  jaegerClient: {
+    fetchAttributeNames: jest.fn(async () => []),
+    fetchTopKAttributeValues: jest.fn(async () => []),
+    fetchBottomKAttributeValues: jest.fn(async () => []),
+  },
+}));
+
 import '@testing-library/jest-dom';
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import dayjs from 'dayjs';
 import queryString from 'query-string';
+import { act } from 'react';
 import store from 'store';
-import * as jaegerApiActions from '../../actions/jaeger-api';
 import SearchableSelect from '../common/SearchableSelect';
 
 import {
@@ -55,13 +61,12 @@ import {
   mapDispatchToProps,
   mapStateToProps,
   optionsWithinMaxLookback,
+  SearchFormImpl as SearchForm,
   submitForm,
   traceIDsToQuery,
-  SearchFormImpl as SearchForm,
   validateDurationFields,
 } from './SearchForm';
 import * as markers from './SearchForm.markers';
-import { CHANGE_SERVICE_ACTION_TYPE } from '../../constants/search-form';
 
 function makeDateParams(dateOffset = 0) {
   const date = new Date();
@@ -546,13 +551,13 @@ describe('<SearchForm>', () => {
     window.getJaegerUiConfig = originalGetConfig;
   });
 
-  it('updates state when tags input changes', () => {
+  it('renders tag clause attribute and value selects', () => {
     const { container } = render(<SearchForm {...defaultProps} />);
 
-    const tagsInput = container.querySelector('input[name="tags"]');
-    fireEvent.change(tagsInput, { target: { value: 'new=tag' } });
-
-    expect(tagsInput.value).toBe('new=tag');
+    // SearchableSelect is mocked; its data-testid becomes "mock-select-tag-attribute-1"
+    expect(container.querySelector('[data-testid="mock-select-tag-attribute-1"]')).toBeInTheDocument();
+    // The Remove clause button is a reliable indicator that a full clause row rendered
+    expect(container.querySelector('[aria-label="Remove clause 1"]')).toBeInTheDocument();
   });
 
   it('prevents default form submission behavior', async () => {
@@ -746,11 +751,9 @@ describe('SearchForm onChange handlers', () => {
     });
     await waitFor(() => expect(resultsLimitInput.value).toBe('100'));
 
-    const tagsInput = container.querySelector('input[name="tags"]');
-    await act(async () => {
-      fireEvent.change(tagsInput, { target: { value: 'error=true' } });
-    });
-    await waitFor(() => expect(tagsInput.value).toBe('error=true'));
+    // SearchableSelect is mocked; its data-testid becomes "mock-select-tag-attribute-1"
+    expect(container.querySelector('[data-testid="mock-select-tag-attribute-1"]')).toBeInTheDocument();
+    expect(container.querySelector('[aria-label="Remove clause 1"]')).toBeInTheDocument();
 
     const maxDurationInput = container.querySelector('input[name="maxDuration"]');
     await act(async () => {
@@ -1018,5 +1021,113 @@ describe('mapDispatchToProps()', () => {
       searchTraces: expect.any(Function),
       submitFormHandler: expect.any(Function),
     });
+  });
+});
+
+describe('clause builder', () => {
+  afterEach(cleanup);
+  beforeEach(() => {
+    jest.clearAllMocks();
+    SearchableSelect.onChangeFns = {};
+    SearchableSelect.disabled = {};
+  });
+
+  it('renders one clause row by default', () => {
+    const { container } = render(<SearchForm {...defaultProps} />);
+    // One Remove button means one clause row
+    expect(container.querySelectorAll('[aria-label^="Remove clause"]')).toHaveLength(1);
+  });
+
+  it('adds a new clause row when "Add clause" button is clicked', async () => {
+    const { container, getByRole } = render(<SearchForm {...defaultProps} />);
+
+    const addButton = getByRole('button', { name: 'Add clause' });
+    await act(async () => {
+      fireEvent.click(addButton);
+    });
+
+    expect(container.querySelectorAll('[aria-label^="Remove clause"]')).toHaveLength(2);
+  });
+
+  it('removes a clause row when the remove button is clicked', async () => {
+    const { container, getByRole } = render(<SearchForm {...defaultProps} />);
+
+    // Add a second clause
+    await act(async () => {
+      fireEvent.click(getByRole('button', { name: 'Add clause' }));
+    });
+    expect(container.querySelectorAll('[aria-label^="Remove clause"]')).toHaveLength(2);
+
+    // Remove the first clause
+    await act(async () => {
+      fireEvent.click(container.querySelector('[aria-label="Remove clause 1"]'));
+    });
+    expect(container.querySelectorAll('[aria-label^="Remove clause"]')).toHaveLength(1);
+  });
+
+  it('keeps at least one clause row after removing (remove disabled when only one)', () => {
+    const { container } = render(<SearchForm {...defaultProps} />);
+    const removeButton = container.querySelector('[aria-label="Remove clause 1"]');
+    expect(removeButton).toBeDisabled();
+  });
+
+  it('populates clauses from initialValues tags on mount', () => {
+    const { container } = render(
+      <SearchForm {...defaultProps} initialValues={{ tags: 'http.method=GET error=true' }} />
+    );
+    // Two tags parsed from initialValues → two clause rows (one Remove button per row)
+    expect(container.querySelectorAll('[aria-label^="Remove clause"]')).toHaveLength(2);
+  });
+
+  it('fetches attribute names when a service is selected', async () => {
+    const { jaegerClient } = require('../../api/v3/client');
+    jaegerClient.fetchAttributeNames.mockResolvedValueOnce(['http.method', 'http.status_code']);
+
+    render(<SearchForm {...defaultProps} initialValues={{ service: 'svcA', lookback: '1h' }} />);
+
+    await waitFor(() => expect(jaegerClient.fetchAttributeNames).toHaveBeenCalledTimes(1));
+    expect(jaegerClient.fetchAttributeNames).toHaveBeenCalledWith(
+      expect.objectContaining({ serviceName: 'svcA' }),
+      200
+    );
+  });
+
+  it('does not fetch attribute names when no service is selected', async () => {
+    const { jaegerClient } = require('../../api/v3/client');
+
+    render(<SearchForm {...defaultProps} />);
+
+    // Allow any async effects to settle
+    await act(async () => {});
+    expect(jaegerClient.fetchAttributeNames).not.toHaveBeenCalled();
+  });
+
+  it('fetches attribute values when a clause has an attribute key set', async () => {
+    const { jaegerClient } = require('../../api/v3/client');
+    jaegerClient.fetchTopKAttributeValues.mockResolvedValueOnce(['GET', 'POST']);
+    jaegerClient.fetchBottomKAttributeValues.mockResolvedValueOnce(['DELETE']);
+
+    // Pre-populate a clause with a key via initialValues so the fetch triggers on mount
+    render(
+      <SearchForm
+        {...defaultProps}
+        initialValues={{ service: 'svcA', lookback: '1h', tags: 'http.method=GET' }}
+      />
+    );
+
+    await waitFor(() =>
+      expect(jaegerClient.fetchTopKAttributeValues).toHaveBeenCalledWith(
+        expect.objectContaining({ serviceName: 'svcA' }),
+        'http.method',
+        10
+      )
+    );
+    await waitFor(() =>
+      expect(jaegerClient.fetchBottomKAttributeValues).toHaveBeenCalledWith(
+        expect.objectContaining({ serviceName: 'svcA' }),
+        'http.method',
+        10
+      )
+    );
   });
 });

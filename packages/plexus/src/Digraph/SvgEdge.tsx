@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from 'react';
+import memoizeOne from 'memoize-one';
 
 import { TAnyProps, TRendererUtils, TSetProps } from './types';
 import { assignMergeCss, getProps } from './utils';
@@ -47,41 +48,42 @@ function computeLabelCoord(pathPoints: [number, number][], label?: string | unde
   return { labelX, labelY };
 }
 
-function SvgEdge<U = {}>(props: TProps<U>) {
-  const { getClassName, layoutEdge, markerEndId, markerStartId, renderUtils, setOnEdge, label } = props;
-  const { pathPoints } = layoutEdge;
+export default class SvgEdge<U = {}> extends React.PureComponent<TProps<U>> {
+  makePathD = memoizeOne(makePathD);
 
-  const d = React.useMemo(() => makePathD(pathPoints), [pathPoints]);
+  render() {
+    const { getClassName, layoutEdge, markerEndId, markerStartId, renderUtils, setOnEdge, label } =
+      this.props;
+    const { pathPoints } = layoutEdge;
+    const d = makePathD(pathPoints);
+    const markerEnd = makeIriRef(renderUtils, markerEndId);
+    const markerStart = makeIriRef(renderUtils, markerStartId);
+    const customProps = assignMergeCss(
+      {
+        className: getClassName('SvgEdge'),
+      },
+      getProps(setOnEdge, layoutEdge, renderUtils)
+    );
 
-  const markerEnd = makeIriRef(renderUtils, markerEndId);
-  const markerStart = makeIriRef(renderUtils, markerStartId);
-  const customProps = assignMergeCss(
-    {
-      className: getClassName('SvgEdge'),
-    },
-    getProps(setOnEdge, layoutEdge, renderUtils)
-  );
+    const { labelX, labelY } = computeLabelCoord(pathPoints, label);
 
-  const { labelX, labelY } = computeLabelCoord(pathPoints, label);
+    return (
+      <g>
+        <path
+          d={d}
+          fill="none"
+          vectorEffect="non-scaling-stroke"
+          markerEnd={markerEnd}
+          markerStart={markerStart}
+          {...customProps}
+        />
 
-  return (
-    <g>
-      <path
-        d={d}
-        fill="none"
-        vectorEffect="non-scaling-stroke"
-        markerEnd={markerEnd}
-        markerStart={markerStart}
-        {...customProps}
-      />
-
-      {label && (
-        <text x={labelX} y={labelY} fill="#000" fontSize="1rem" fontWeight="bold">
-          {label}
-        </text>
-      )}
-    </g>
-  );
+        {label && (
+          <text x={labelX} y={labelY} fill="#000" fontSize="1rem" fontWeight="bold">
+            {label}
+          </text>
+        )}
+      </g>
+    );
+  }
 }
-
-export default React.memo(SvgEdge) as typeof SvgEdge;

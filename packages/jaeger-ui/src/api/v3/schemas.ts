@@ -9,13 +9,21 @@
  */
 
 // Import auto-generated schemas (post-processed for strict validation)
-export { ServicesResponseSchema, OperationsResponseSchema, OperationSchema } from './generated-client';
+export { OperationSchema, OperationsResponseSchema, ServicesResponseSchema } from './generated-client';
 
 /**
  * Helper validators for trace and span IDs in hex format
  * These are custom additions not present in the OpenAPI spec
  */
 import { z } from 'zod';
+
+export const AttributeNamesResponseSchema = z.object({
+  names: z.array(z.string()),
+});
+
+export const AttributeValuesResponseSchema = z.object({
+  values: z.array(z.string()),
+});
 
 export const traceIdHex = z.string().regex(/^[0-9a-f]{32}$/i, 'Invalid trace ID: must be 32-char hex string');
 

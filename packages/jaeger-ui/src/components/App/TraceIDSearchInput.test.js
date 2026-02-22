@@ -4,29 +4,24 @@ SPDX-License-Identifier: Apache-2.0
 */
 
 import React from 'react';
+import { createMemoryHistory } from 'history';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { MemoryRouter } from 'react-router-dom';
+import { Router } from 'react-router-dom';
 import TraceIDSearchInput from './TraceIDSearchInput';
 import { CompatRouter } from 'react-router-dom-v5-compat';
 
-const mockNavigate = jest.fn();
-jest.mock('react-router-dom-v5-compat', () => {
-  return {
-    ...jest.requireActual('react-router-dom-v5-compat'),
-    useNavigate: () => mockNavigate,
-  };
-});
-
 describe('<TraceIDSearchInput />', () => {
+  let history;
+
   beforeEach(() => {
-    mockNavigate.mockReset();
+    history = createMemoryHistory();
     render(
-      <MemoryRouter>
+      <Router history={history}>
         <CompatRouter>
           <TraceIDSearchInput />
         </CompatRouter>
-      </MemoryRouter>
+      </Router>
     );
   });
 
@@ -34,19 +29,19 @@ describe('<TraceIDSearchInput />', () => {
     expect(screen.getByTestId('idInput')).toBeInTheDocument();
   });
 
-  it('navigates to trace page when input is provided', () => {
+  it('pushes input id to history', () => {
     const traceId = 'MOCK-TRACE-ID';
     const idInput = screen.getByPlaceholderText('Lookup by Trace ID...');
     fireEvent.change(idInput, { target: { value: traceId } });
     fireEvent.submit(screen.getByTestId('TraceIDSearchInput--form'));
 
-    expect(mockNavigate).toHaveBeenCalledTimes(1);
-    expect(mockNavigate).toHaveBeenCalledWith(`/trace/${traceId}`);
+    expect(history.length).toEqual(2);
+    expect(history.location.pathname).toEqual(`/trace/${traceId}`);
   });
 
-  it('does not navigate when input is empty', () => {
+  it('does not push to history on falsy input value', () => {
     fireEvent.submit(screen.getByTestId('TraceIDSearchInput--form'));
 
-    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(history.length).toEqual(1);
   });
 });
