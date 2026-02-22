@@ -8,7 +8,7 @@ import logfmtParser from 'logfmt/lib/logfmt_parser';
 import { stringify as logfmtStringify } from 'logfmt/lib/stringify';
 import memoizeOne from 'memoize-one';
 import queryString from 'query-string';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { IoAdd, IoClose, IoHelp } from 'react-icons/io5';
 import { connect, ConnectedProps } from 'react-redux';
 import { bindActionCreators, Dispatch } from 'redux';
@@ -36,6 +36,8 @@ const Option = Select.Option;
 
 const ADJUST_TIME_ENABLED_KEY = 'jaeger-ui/search-adjust-time-enabled';
 const IMPATIENT_MODE_KEY = 'jaeger-ui/search-impatient-mode';
+const IMPATIENT_LAST_REFRESH_KEY = 'jaeger-ui/search-impatient-last-refresh-ms';
+const IMPATIENT_REFRESH_INTERVAL_MS = 60 * 1000;
 
 interface TimeStampParams {
   startDate: string;
@@ -451,6 +453,16 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
     store.set(IMPATIENT_MODE_KEY, value);
   }, []);
 
+  const [lastImpatientRefreshMs, setLastImpatientRefreshMs] = useState<number>(() => {
+    const storedRefreshTs = store.get(IMPATIENT_LAST_REFRESH_KEY);
+    return typeof storedRefreshTs === 'number' ? storedRefreshTs : 0;
+  });
+
+  const setLastImpatientRefresh = useCallback((timestampMs: number) => {
+    setLastImpatientRefreshMs(timestampMs);
+    store.set(IMPATIENT_LAST_REFRESH_KEY, timestampMs);
+  }, []);
+
   const handleChange = useCallback((fieldData: Partial<ISearchFormFields>) => {
     setFormData(prev => {
       const nextFormData = { ...prev, ...fieldData };
@@ -475,24 +487,93 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
     lookback: selectedLookback,
   } = formData;
 
-  // Auto-search when impatient mode is enabled and specific search criteria change
+  const impatientCriteriaSignature = useMemo(
+    () =>
+      JSON.stringify({
+        service: selectedService ?? '',
+        operation: selectedOperation ?? '',
+        tags: selectedTags ?? '',
+        lookback: selectedLookback ?? '',
+        startDate: formData.startDate ?? '',
+        startDateTime: formData.startDateTime ?? '',
+        endDate: formData.endDate ?? '',
+        endDateTime: formData.endDateTime ?? '',
+        minDuration: formData.minDuration ?? '',
+        maxDuration: formData.maxDuration ?? '',
+        resultsLimit: formData.resultsLimit ?? '',
+      }),
+    [
+      formData.endDate,
+      formData.endDateTime,
+      formData.maxDuration,
+      formData.minDuration,
+      formData.resultsLimit,
+      formData.startDate,
+      formData.startDateTime,
+      selectedLookback,
+      selectedOperation,
+      selectedService,
+      selectedTags,
+    ]
+  );
+  const prevImpatientCriteriaSignatureRef = useRef(impatientCriteriaSignature);
+
+  // Auto-search when impatient mode is enabled and search criteria are updated by the user.
   useEffect(() => {
-    if (impatientMode && !submitting && selectedService && selectedService !== '-') {
-      const timer = setTimeout(() => {
-        submitFormHandler(formData as ISearchFormFields, searchAdjustEndTime, adjustTimeEnabled);
-      }, 500); // Debounce by 500ms to avoid too many requests
-      return () => clearTimeout(timer);
+    if (!impatientMode || submitting || !selectedService || selectedService === '-') {
+      prevImpatientCriteriaSignatureRef.current = impatientCriteriaSignature;
+      return;
     }
+
+    const criteriaChanged = prevImpatientCriteriaSignatureRef.current !== impatientCriteriaSignature;
+    prevImpatientCriteriaSignatureRef.current = impatientCriteriaSignature;
+    if (!criteriaChanged) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      submitFormHandler(formData as ISearchFormFields, searchAdjustEndTime, adjustTimeEnabled);
+      setLastImpatientRefresh(Date.now());
+    }, 500); // Debounce by 500ms to avoid too many requests while editing filters
+    return () => clearTimeout(timer);
   }, [
+    impatientCriteriaSignature,
     impatientMode,
     submitting,
     selectedService,
-    selectedOperation,
-    selectedTags,
     searchAdjustEndTime,
     adjustTimeEnabled,
     submitFormHandler,
     formData,
+    setLastImpatientRefresh,
+  ]);
+
+  // Auto-search once per minute while impatient mode is enabled.
+  useEffect(() => {
+    if (!impatientMode || submitting || !selectedService || selectedService === '-') {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      if (now - lastImpatientRefreshMs < IMPATIENT_REFRESH_INTERVAL_MS) {
+        return;
+      }
+      submitFormHandler(formData as ISearchFormFields, searchAdjustEndTime, adjustTimeEnabled);
+      setLastImpatientRefresh(now);
+    }, IMPATIENT_REFRESH_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [
+    impatientMode,
+    submitting,
+    selectedService,
+    formData,
+    searchAdjustEndTime,
+    adjustTimeEnabled,
+    submitFormHandler,
+    lastImpatientRefreshMs,
+    setLastImpatientRefresh,
   ]);
 
   const handleAdjustTimeToggle = useCallback((checked: boolean) => {

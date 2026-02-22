@@ -195,7 +195,13 @@ export function SearchTracePageImpl(props: SearchTracePageImplProps) {
         <>
           <div
             className="SearchTracePage--column"
-            style={{ flexBasis: `${leftPaneWidth}%`, minWidth: '15%', maxWidth: '50%' }}
+            style={{
+              flexGrow: 0,
+              flexShrink: 0,
+              flexBasis: `${leftPaneWidth}%`,
+              minWidth: '15%',
+              maxWidth: '50%',
+            }}
           >
             <div className="SearchTracePage--find">
               <Button
