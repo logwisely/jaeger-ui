@@ -581,6 +581,64 @@ describe('<SearchForm>', () => {
     );
   });
 
+  describe('impatient mode auto refresh', () => {
+    let oldStoreGet;
+
+    beforeEach(() => {
+      oldStoreGet = store.get;
+      store.get = key => (key === 'jaeger-ui/search-impatient-mode' ? true : undefined);
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      store.get = oldStoreGet;
+      jest.useRealTimers();
+    });
+
+    it('does not auto-search on mount without filter changes', () => {
+      render(<SearchForm {...defaultProps} initialValues={{ service: 'svcA' }} />);
+
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+
+      expect(defaultProps.submitFormHandler).not.toHaveBeenCalled();
+    });
+
+    it('auto-searches when filter criteria changes', async () => {
+      render(<SearchForm {...defaultProps} initialValues={{ service: 'svcA' }} />);
+
+      await act(async () => {
+        SearchableSelect.onChangeFns.operation('B');
+      });
+
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+
+      expect(defaultProps.submitFormHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('auto-searches once per minute when criteria are unchanged', () => {
+      render(<SearchForm {...defaultProps} initialValues={{ service: 'svcA' }} />);
+
+      act(() => {
+        jest.advanceTimersByTime(59000);
+      });
+      expect(defaultProps.submitFormHandler).not.toHaveBeenCalled();
+
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+      expect(defaultProps.submitFormHandler).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        jest.advanceTimersByTime(60000);
+      });
+      expect(defaultProps.submitFormHandler).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('error handling', () => {
     const { useServices, useSpanNames } = require('../../hooks/useTraceDiscovery');
 

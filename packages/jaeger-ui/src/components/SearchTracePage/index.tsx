@@ -2,8 +2,9 @@
 // Copyright (c) 2017 Uber Technologies, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Col, Row, Tabs } from 'antd';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Tabs, Button } from 'antd';
+import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import { connect } from 'react-redux';
 import { bindActionCreators, Dispatch } from 'redux';
 import store from 'store';
@@ -13,6 +14,7 @@ import { useConfig } from '../../hooks/useConfig';
 
 import SearchForm from './SearchForm';
 import SearchResults from './SearchResults';
+import AIAssistantSearch from './AIAssistantSearch';
 import { isSameQuery, getUrlState } from './url';
 import * as jaegerApiActions from '../../actions/jaeger-api';
 import * as fileReaderActions from '../../actions/file-reader-api';
@@ -95,6 +97,49 @@ export function SearchTracePageImpl(props: SearchTracePageImplProps) {
   const config = useConfig();
   const { disableFileUploadControl } = config;
   const [sortBy, setSortBy] = useState(orderBy.MOST_RECENT);
+  const [leftPaneWidth, setLeftPaneWidth] = useState(25); // percentage
+  const [isResizing, setIsResizing] = useState(false);
+  const [isLeftPaneCollapsed, setIsLeftPaneCollapsed] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseDown = useCallback(() => {
+    setIsResizing(true);
+  }, []);
+
+  const toggleLeftPane = useCallback(() => {
+    setIsLeftPaneCollapsed(prev => !prev);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const rect = container.getBoundingClientRect();
+      const newX = e.clientX - rect.left;
+      const newPercentage = (newX / rect.width) * 100;
+
+      // Clamp between 15% and 50%
+      if (newPercentage >= 15 && newPercentage <= 50) {
+        setLeftPaneWidth(newPercentage);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    // Use capturing phase to ensure we catch events even on other elements
+    window.addEventListener('mousemove', handleMouseMove, true);
+    window.addEventListener('mouseup', handleMouseUp, true);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove, true);
+      window.removeEventListener('mouseup', handleMouseUp, true);
+    };
+  }, [isResizing]);
 
   // componentDidMount logic - intentionally runs only on mount
   useEffect(() => {
@@ -131,6 +176,11 @@ export function SearchTracePageImpl(props: SearchTracePageImplProps) {
     key: 'searchForm',
     children: <SearchForm key={JSON.stringify(urlQueryParams)} />,
   });
+  tabItems.push({
+    label: 'AI Assistant',
+    key: 'AIAssistant',
+    children: <AIAssistantSearch />,
+  });
   if (!disableFileUploadControl) {
     tabItems.push({
       label: 'Upload',
@@ -140,15 +190,45 @@ export function SearchTracePageImpl(props: SearchTracePageImplProps) {
   }
 
   return (
-    <Row className="SearchTracePage--row">
-      {!embedded && (
-        <Col span={6} className="SearchTracePage--column">
-          <div className="SearchTracePage--find">
-            <Tabs size="large" items={tabItems} />
+    <div className="SearchTracePage--row" ref={containerRef}>
+      {!embedded && !isLeftPaneCollapsed && (
+        <>
+          <div
+            className="SearchTracePage--column"
+            style={{
+              flexGrow: 0,
+              flexShrink: 0,
+              flexBasis: `${leftPaneWidth}%`,
+              minWidth: '15%',
+              maxWidth: '50%',
+            }}
+          >
+            <div className="SearchTracePage--find">
+              <Button
+                type="text"
+                size="small"
+                icon={<MenuFoldOutlined />}
+                onClick={toggleLeftPane}
+                className="SearchTracePage--collapseButton"
+                title="Hide search panel"
+              />
+              <Tabs size="large" items={tabItems} />
+            </div>
           </div>
-        </Col>
+          <div className="SearchTracePage--resizeHandle" onMouseDown={handleMouseDown} />
+        </>
       )}
-      <Col span={!embedded ? 18 : 24} className="SearchTracePage--column">
+      {!embedded && isLeftPaneCollapsed && (
+        <div className="SearchTracePage--expandButton">
+          <Button
+            type="text"
+            icon={<MenuUnfoldOutlined />}
+            onClick={toggleLeftPane}
+            title="Show search panel"
+          />
+        </div>
+      )}
+      <div className="SearchTracePage--column" style={{ flex: 1, minWidth: 0 }}>
         {showErrors && (
           <div className="js-test-error-message">
             <h2>There was an error loading traces: </h2>
@@ -186,8 +266,8 @@ export function SearchTracePageImpl(props: SearchTracePageImplProps) {
             width="400"
           />
         )}
-      </Col>
-    </Row>
+      </div>
+    </div>
   );
 }
 

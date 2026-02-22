@@ -1,0 +1,139 @@
+/* Copyright (c) 2025 The Jaeger Authors. */
+/* SPDX-License-Identifier: Apache-2.0 */
+
+.AIAssistantSearch {
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.AIAssistantSearch--card {
+  margin: 0;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.AIAssistantSearch--header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.AIAssistantSearch--header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.AIAssistantSearch--hint {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  margin-top: 4px;
+}
+
+.AIAssistantSearch--actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.AIAssistantSearch--actions button {
+  width: 100%;
+}
+
+/* Form styling */
+.AIAssistantSearch .ant-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.AIAssistantSearch .ant-form-item {
+  margin-bottom: 12px;
+  flex: 0 0 auto;
+}
+
+/* Make the textarea container flexible */
+.AIAssistantSearch .ant-form-item-control {
+  flex-grow: 1;
+}
+
+.AIAssistantSearch .ant-input-textarea-show-count {
+  height: 100%;
+}
+
+.AIAssistantSearch .ant-input-textarea textarea {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+.AIAssistantSearch--result {
+  background-color: #fafafa;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.AIAssistantSearch--result h4 {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.AIAssistantSearch--filterCard {
+  margin-bottom: 0;
+}
+
+.AIAssistantSearch--filterCard h4 {
+  margin-bottom: 12px;
+}
+
+.AIAssistantSearch--filter {
+  padding: 8px 0;
+  font-size: 14px;
+}
+
+.AIAssistantSearch--filter strong {
+  color: #1890ff;
+  margin-right: 8px;
+}
+
+.AIAssistantSearch--history {
+  background-color: #fafafa;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.AIAssistantSearch--historyItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.AIAssistantSearch--historyTime {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.AIAssistantSearch--settings {
+  padding: 16px 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .AIAssistantSearch--actions {
+    gap: 8px;
+  }
+
+  .AIAssistantSearch .ant-form-item {
+    margin-bottom: 12px;
+  }
+}

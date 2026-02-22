@@ -18,7 +18,7 @@ jest.mock('../../hooks/useTraceDiscovery', () => ({
 }));
 
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import store from 'store';
 
@@ -181,6 +181,44 @@ describe('<SearchTracePage>', () => {
       </AllProvider>
     );
     expect(container.querySelector('[data-node-key="searchForm"]')).toBeInTheDocument();
+  });
+
+  it('allows resizing the search panel with drag handle', () => {
+    const { container } = render(
+      <AllProvider>
+        <SearchTracePage {...props} />
+      </AllProvider>
+    );
+
+    const row = container.querySelector('.SearchTracePage--row');
+    const leftPane = container.querySelector('.SearchTracePage--column');
+    const resizeHandle = container.querySelector('.SearchTracePage--resizeHandle');
+
+    expect(row).toBeInTheDocument();
+    expect(leftPane).toBeInTheDocument();
+    expect(resizeHandle).toBeInTheDocument();
+    expect(leftPane.style.flexBasis).toBe('25%');
+
+    Object.defineProperty(row, 'getBoundingClientRect', {
+      value: () => ({
+        width: 1000,
+        left: 0,
+        top: 0,
+        right: 1000,
+        bottom: 500,
+        height: 500,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }),
+      configurable: true,
+    });
+
+    fireEvent.mouseDown(resizeHandle);
+    fireEvent.mouseMove(window, { clientX: 400 });
+    fireEvent.mouseUp(window);
+
+    expect(leftPane.style.flexBasis).toBe('40%');
   });
 
   it('shows an error message if there is an error message', () => {

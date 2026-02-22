@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 .SearchTracePage--row {
   display: flex;
   flex-grow: 1;
+  gap: 0;
 }
 
 .SearchTracePage--column {
@@ -13,6 +14,7 @@ SPDX-License-Identifier: Apache-2.0
   flex-direction: column;
   flex-grow: 1;
   padding: 1rem 0.5rem;
+  overflow: hidden;
 }
 
 .SearchTracePage--column:first-child {
@@ -28,6 +30,73 @@ SPDX-License-Identifier: Apache-2.0
   border: 1px solid var(--border-default);
   padding: 1rem;
   padding-top: 0px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.SearchTracePage--find .ant-tabs {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.SearchTracePage--find .ant-tabs-content-holder {
+  flex: 1;
+  overflow: hidden;
+}
+
+.SearchTracePage--find .ant-tabs-tabpane {
+  height: 100%;
+  overflow: hidden;
+}
+
+.SearchTracePage--resizeHandle {
+  width: 10px;
+  background-color: var(--border-default);
+  flex-shrink: 0;
+  user-select: none;
+  transition: background-color 0.2s ease;
+  cursor: ew-resize;
+  touch-action: none;
+  margin: 0 -1px; /* Extend the hitbox slightly */
+}
+
+.SearchTracePage--resizeHandle:hover {
+  background-color: #1890ff;
+}
+
+.SearchTracePage--resizeHandle:active {
+  background-color: #096dd9;
+}
+
+.SearchTracePage--expandButton {
+  width: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background-color: var(--surface-secondary);
+  border-right: 1px solid var(--border-default);
+  padding: 0 0.5rem;
+}
+
+.SearchTracePage--expandButton button {
+  font-size: 16px;
+}
+
+.SearchTracePage--collapseButton {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  padding: 4px !important;
+  min-width: 32px !important;
+}
+
+.SearchTracePage--find {
+  position: relative;
 }
 
 .SearchTracePage--logo {
