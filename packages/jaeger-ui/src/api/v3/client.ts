@@ -88,7 +88,9 @@ export class JaegerClient {
   async fetchAttributeNames(query: AttributeSuggestionQuery, limit = 100): Promise<string[]> {
     const params = this.buildFindTracesQueryParams(query);
     params.set('limit', String(limit));
-    const response = await this.fetchWithTimeout(`${this.apiRoot}/attributes/names?${params.toString()}`);
+    const response = await this.fetchWithTimeout(
+      `${this.apiRoot}/attributes/indexed/names?${params.toString()}`
+    );
     if (!response.ok) {
       throw new Error(`Failed to fetch attribute names: ${response.status} ${response.statusText}`);
     }
