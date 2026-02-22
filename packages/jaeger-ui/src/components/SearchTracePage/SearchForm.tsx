@@ -35,6 +35,7 @@ const FormItem = Form.Item;
 const Option = Select.Option;
 
 const ADJUST_TIME_ENABLED_KEY = 'jaeger-ui/search-adjust-time-enabled';
+const IMPATIENT_MODE_KEY = 'jaeger-ui/search-impatient-mode';
 
 interface TimeStampParams {
   startDate: string;
@@ -264,6 +265,8 @@ interface ISearchFormFields {
   lookback: string;
 }
 
+export type { ISearchFormFields };
+
 type TagClause = {
   key: string;
   operator: '==' | '!=';
@@ -438,6 +441,16 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
     return storedAdjustTimeEnabled !== undefined ? storedAdjustTimeEnabled : Boolean(searchAdjustEndTime);
   });
 
+  const [impatientMode, setImpatientModeState] = useState<boolean>(() => {
+    const storedImpatientMode = store.get(IMPATIENT_MODE_KEY);
+    return storedImpatientMode !== undefined ? storedImpatientMode : false;
+  });
+
+  const setImpatientMode = useCallback((value: boolean) => {
+    setImpatientModeState(value);
+    store.set(IMPATIENT_MODE_KEY, value);
+  }, []);
+
   const handleChange = useCallback((fieldData: Partial<ISearchFormFields>) => {
     setFormData(prev => {
       const nextFormData = { ...prev, ...fieldData };
@@ -455,6 +468,33 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
     }
   }, [computedTags, formData.tags, handleChange]);
 
+  const {
+    service: selectedService,
+    operation: selectedOperation,
+    tags: selectedTags,
+    lookback: selectedLookback,
+  } = formData;
+
+  // Auto-search when impatient mode is enabled and specific search criteria change
+  useEffect(() => {
+    if (impatientMode && !submitting && selectedService && selectedService !== '-') {
+      const timer = setTimeout(() => {
+        submitFormHandler(formData as ISearchFormFields, searchAdjustEndTime, adjustTimeEnabled);
+      }, 500); // Debounce by 500ms to avoid too many requests
+      return () => clearTimeout(timer);
+    }
+  }, [
+    impatientMode,
+    submitting,
+    selectedService,
+    selectedOperation,
+    selectedTags,
+    searchAdjustEndTime,
+    adjustTimeEnabled,
+    submitFormHandler,
+    formData,
+  ]);
+
   const handleAdjustTimeToggle = useCallback((checked: boolean) => {
     setAdjustTimeEnabled(checked);
     store.set(ADJUST_TIME_ENABLED_KEY, checked);
@@ -468,7 +508,6 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
     [formData, searchAdjustEndTime, adjustTimeEnabled, submitFormHandler]
   );
 
-  const { service: selectedService, lookback: selectedLookback } = formData;
   const noSelectedService = selectedService === '-' || !selectedService;
   const tz = selectedLookback === 'custom' ? new Date().toTimeString().replace(/^.*?GMT/, 'UTC') : null;
   const invalidDuration =
@@ -966,6 +1005,17 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
           max={getConfigValue('search.maxLimit')}
           onChange={e => handleChange({ resultsLimit: e.target.value })}
         />
+      </FormItem>
+
+      <FormItem label="Impatient Mode">
+        <Switch
+          checked={impatientMode}
+          onChange={setImpatientMode}
+          title="Auto-search as you change filter values"
+        />
+        <span style={{ marginLeft: '8px', fontSize: '12px', color: '#999' }}>
+          Search automatically as you type
+        </span>
       </FormItem>
 
       <Button
