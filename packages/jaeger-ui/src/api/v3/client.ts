@@ -118,25 +118,6 @@ export class JaegerClient {
     return validated.values;
   }
 
-  async fetchBottomKAttributeValues(
-    query: AttributeSuggestionQuery,
-    attributeName: string,
-    k = 10
-  ): Promise<string[]> {
-    const params = this.buildFindTracesQueryParams(query);
-    params.set('attribute_name', attributeName);
-    params.set('k', String(k));
-    const response = await this.fetchWithTimeout(
-      `${this.apiRoot}/attributes/values/bottomk?${params.toString()}`
-    );
-    if (!response.ok) {
-      throw new Error(`Failed to fetch bottom-K values: ${response.status} ${response.statusText}`);
-    }
-    const data = await response.json();
-    const validated = AttributeValuesResponseSchema.parse(data);
-    return validated.values;
-  }
-
   /**
    * Fetch with timeout support using AbortController.
    * @param url - The URL to fetch

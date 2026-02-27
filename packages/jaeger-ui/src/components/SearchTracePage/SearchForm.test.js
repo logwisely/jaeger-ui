@@ -40,7 +40,6 @@ jest.mock('../../api/v3/client', () => ({
   jaegerClient: {
     fetchAttributeNames: jest.fn(async () => []),
     fetchTopKAttributeValues: jest.fn(async () => []),
-    fetchBottomKAttributeValues: jest.fn(async () => []),
   },
 }));
 
@@ -54,8 +53,10 @@ import SearchableSelect from '../common/SearchableSelect';
 
 import {
   applyAdjustTime,
+  clausesToLogfmtTags,
   convertQueryParamsToFormDates,
   convTagsLogfmt,
+  getAvailableAttributeNames,
   getUnixTimeStampInMSFromForm,
   lookbackToTimestamp,
   mapDispatchToProps,
@@ -146,6 +147,38 @@ describe('conversion utils', () => {
         num: '9',
       });
       expect(convTagsLogfmt(input)).toBe(target);
+    });
+  });
+
+  describe('clausesToLogfmtTags()', () => {
+    it('does not throw when a cleared select passes undefined value', () => {
+      expect(() =>
+        clausesToLogfmtTags([
+          { key: 'http.method', operator: '==', value: undefined },
+          { key: undefined, operator: '==', value: 'GET' },
+        ])
+      ).not.toThrow();
+      expect(
+        clausesToLogfmtTags([
+          { key: 'http.method', operator: '==', value: undefined },
+          { key: undefined, operator: '==', value: 'GET' },
+        ])
+      ).toBe('');
+    });
+  });
+
+  describe('getAvailableAttributeNames()', () => {
+    it('filters out attribute names used by other clauses', () => {
+      const names = ['http.method', 'span.kind', 'error'];
+      const clauses = [{ key: 'http.method' }, { key: 'error' }];
+      expect(getAvailableAttributeNames(names, clauses, 1)).toEqual(['span.kind', 'error']);
+      expect(getAvailableAttributeNames(names, clauses, 0)).toEqual(['http.method', 'span.kind']);
+    });
+
+    it('keeps all names for the current clause when other clauses are empty', () => {
+      const names = ['http.method', 'span.kind', 'error'];
+      const clauses = [{ key: 'http.method' }, { key: '' }];
+      expect(getAvailableAttributeNames(names, clauses, 0)).toEqual(names);
     });
   });
 
@@ -1123,10 +1156,12 @@ describe('clause builder', () => {
     expect(container.querySelectorAll('[aria-label^="Remove clause"]')).toHaveLength(1);
   });
 
-  it('keeps at least one clause row after removing (remove disabled when only one)', () => {
+  it('allows removing the only clause row', async () => {
     const { container } = render(<SearchForm {...defaultProps} />);
-    const removeButton = container.querySelector('[aria-label="Remove clause 1"]');
-    expect(removeButton).toBeDisabled();
+    await act(async () => {
+      fireEvent.click(container.querySelector('[aria-label="Remove clause 1"]'));
+    });
+    expect(container.querySelectorAll('[aria-label^="Remove clause"]')).toHaveLength(0);
   });
 
   it('populates clauses from initialValues tags on mount', () => {
@@ -1163,7 +1198,6 @@ describe('clause builder', () => {
   it('fetches attribute values when a clause has an attribute key set', async () => {
     const { jaegerClient } = require('../../api/v3/client');
     jaegerClient.fetchTopKAttributeValues.mockResolvedValueOnce(['GET', 'POST']);
-    jaegerClient.fetchBottomKAttributeValues.mockResolvedValueOnce(['DELETE']);
 
     // Pre-populate a clause with a key via initialValues so the fetch triggers on mount
     render(
@@ -1175,13 +1209,6 @@ describe('clause builder', () => {
 
     await waitFor(() =>
       expect(jaegerClient.fetchTopKAttributeValues).toHaveBeenCalledWith(
-        expect.objectContaining({ serviceName: 'svcA' }),
-        'http.method',
-        10
-      )
-    );
-    await waitFor(() =>
-      expect(jaegerClient.fetchBottomKAttributeValues).toHaveBeenCalledWith(
         expect.objectContaining({ serviceName: 'svcA' }),
         'http.method',
         10

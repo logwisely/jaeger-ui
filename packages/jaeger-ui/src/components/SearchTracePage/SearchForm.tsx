@@ -292,11 +292,11 @@ function parseLogfmtTagsToClauses(tags: string | null | undefined): TagClause[] 
   }
 }
 
-function clausesToLogfmtTags(clauses: TagClause[]): string {
+export function clausesToLogfmtTags(clauses: TagClause[]): string {
   const data: Record<string, string> = {};
   clauses.forEach(c => {
-    const k = c.key.trim();
-    const v = c.value.trim();
+    const k = typeof c.key === 'string' ? c.key.trim() : '';
+    const v = typeof c.value === 'string' ? c.value.trim() : '';
     if (!k || !v) {
       return;
     }
@@ -310,6 +310,19 @@ function clausesToLogfmtTags(clauses: TagClause[]): string {
   } catch {
     return '';
   }
+}
+
+export function getAvailableAttributeNames(
+  allNames: string[],
+  clauses: Array<Pick<TagClause, 'key'>>,
+  currentClauseIndex: number
+): string[] {
+  const usedElsewhere = new Set(
+    clauses
+      .map((clause, index) => (index === currentClauseIndex ? '' : clause.key))
+      .filter((key): key is string => Boolean(key))
+  );
+  return allNames.filter(name => !usedElsewhere.has(name));
 }
 
 type SearchTracesFunction = typeof jaegerApiActions.searchTraces;
@@ -704,11 +717,10 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
             return;
           }
           try {
-            const [top, bottom] = await Promise.all([
+            const [top] = await Promise.all([
               jaegerClient.fetchTopKAttributeValues(suggestionQuery, clause.key, 10),
-              jaegerClient.fetchBottomKAttributeValues(suggestionQuery, clause.key, 10),
             ]);
-            nextSuggestions[idx] = Array.from(new Set([...top, ...bottom]));
+            nextSuggestions[idx] = Array.from(new Set([...top]));
           } catch {
             nextSuggestions[idx] = [];
           }
@@ -809,6 +821,7 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
         <div>
           {tagClauses.map((clause, idx) => {
             const suggestedValues = attributeValueSuggestions[idx] || [];
+            const availableAttributeNames = getAvailableAttributeNames(attributeNameOptions, tagClauses, idx);
             const searchText = valueSearchTexts[idx] ?? '';
             const customOption =
               searchText && !suggestedValues.includes(searchText)
@@ -826,9 +839,9 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
                     loading={isLoadingAttributeNames}
                     style={{ width: '100%' }}
                     allowClear
-                    onChange={(value: string) => {
+                    onChange={(value?: string) => {
                       const next = [...tagClauses];
-                      next[idx] = { ...next[idx], key: String(value) };
+                      next[idx] = { ...next[idx], key: value ?? '' };
                       setTagClauses(next);
                     }}
                     onClear={() => {
@@ -837,7 +850,7 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
                       setTagClauses(next);
                     }}
                   >
-                    {attributeNameOptions.map(name => (
+                    {availableAttributeNames.map(name => (
                       <Option key={name} value={name}>
                         {name}
                       </Option>
@@ -876,9 +889,9 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
                     filterOption={false}
                     allowClear
                     onSearch={(text: string) => setValueSearchTexts(prev => ({ ...prev, [idx]: text }))}
-                    onChange={(value: string) => {
+                    onChange={(value?: string) => {
                       const next = [...tagClauses];
-                      next[idx] = { ...next[idx], value };
+                      next[idx] = { ...next[idx], value: value ?? '' };
                       setTagClauses(next);
                       setValueSearchTexts(prev => ({ ...prev, [idx]: '' }));
                     }}
@@ -893,11 +906,11 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
                 <Col span={2}>
                   <Button
                     aria-label={`Remove clause ${idx + 1}`}
-                    disabled={submitting || tagClauses.length === 1}
+                    disabled={submitting}
                     icon={<IoClose />}
                     onClick={() => {
                       const next = tagClauses.filter((_, i) => i !== idx);
-                      setTagClauses(next.length ? next : [{ key: '', operator: '==', value: '' }]);
+                      setTagClauses(next);
                     }}
                   />
                 </Col>
