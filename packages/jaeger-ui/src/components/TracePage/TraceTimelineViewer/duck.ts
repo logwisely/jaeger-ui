@@ -241,10 +241,7 @@ function detailSubsectionToggle(
   state: TTraceTimeline,
   { spanID }: TSpanIdValue
 ) {
-  const old = state.detailStates.get(spanID);
-  if (!old) {
-    return state;
-  }
+  const old = state.detailStates.get(spanID) || new DetailState();
   let detailState;
   if (subSection === 'tags') {
     detailState = old.toggleTags();
@@ -269,10 +266,7 @@ const detailWarningsToggle = detailSubsectionToggle.bind(null, 'warnings');
 const detailReferencesToggle = detailSubsectionToggle.bind(null, 'references');
 
 function detailLogItemToggle(state: TTraceTimeline, { spanID, logItem }: TSpanIdLogValue) {
-  const old = state.detailStates.get(spanID);
-  if (!old) {
-    return state;
-  }
+  const old = state.detailStates.get(spanID) || new DetailState();
   const detailState = old.toggleLogItem(logItem);
   const detailStates = new Map(state.detailStates);
   detailStates.set(spanID, detailState);
