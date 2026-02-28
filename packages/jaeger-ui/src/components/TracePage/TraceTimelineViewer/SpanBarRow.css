@@ -154,23 +154,49 @@ SPDX-License-Identifier: Apache-2.0
   z-index: 1;
 }
 
-.SpanBarRow--errorIcon {
+.SpanBarRow--failureIcon {
   background: #db2828;
-  border-radius: 6.5px;
+  border-radius: 8px;
   color: #fff;
-  font-size: 0.85em;
+  font-size: 1.05em;
   margin-right: 0.25rem;
-  padding: 1px;
+  padding: 2px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
 /* Hollow variant for bubbled errors from collapsed children */
-.SpanBarRow--errorIcon--hollow {
+.SpanBarRow--failureIcon--hollow {
   background: transparent;
   border: 1.5px solid #db2828;
   color: #db2828;
   font-weight: bold;
   padding: 0px;
   /* Adjust padding since border adds 1.5px */
+}
+
+.SpanBarRow--exceptionIcon {
+  background: #a8071a;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 1.2em;
+  margin-right: 0.25rem;
+  padding: 2px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+  vertical-align: middle;
+}
+
+.SpanBarRow--kindIcon {
+  font-size: 0.95em;
+  margin-right: 0.25rem;
+  vertical-align: middle;
+}
+
+.SpanBarRow--kindIcon--client {
+  color: #2b8a3e;
+}
+
+.SpanBarRow--kindIcon--server {
+  color: #1c7ed6;
 }
 
 .SpanBarRow--rpcColorMarker {

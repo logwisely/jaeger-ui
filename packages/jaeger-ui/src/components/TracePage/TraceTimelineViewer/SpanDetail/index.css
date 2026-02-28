@@ -52,3 +52,76 @@ SPDX-License-Identifier: Apache-2.0
 .AccordianWarnings--label {
   color: var(--feedback-warning);
 }
+
+.SpanDetail--serviceTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.SpanDetail--title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.SpanDetail--titlePart {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.SpanDetail--titleLabel {
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.SpanDetail--titleValue {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.SpanDetail--titlePart.is-critical-path .SpanDetail--titleValue {
+  background: #fff1b8;
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+.SpanDetail--titlePart.is-long-duration .SpanDetail--titleValue {
+  color: #cf1322;
+}
+
+.SpanDetail--statusIcon {
+  background: #db2828;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+  color: #fff;
+  display: inline-flex;
+  font-size: 1.05em;
+  padding: 2px;
+}
+
+.SpanDetail--statusIcon--exception {
+  background: #a8071a;
+  font-size: 1.2em;
+}
+
+.SpanDetail--statusIcon--failure {
+  background: #db2828;
+}
+
+.SpanDetail--kindIcon {
+  font-size: 0.95em;
+}
+
+.SpanDetail--kindIcon--client {
+  color: #2b8a3e;
+}
+
+.SpanDetail--kindIcon--server {
+  color: #1c7ed6;
+}

@@ -100,6 +100,7 @@ describe('AltViewOptions', () => {
     expect(screen.getByTestId('menu-item-TraceGraph')).toBeInTheDocument();
     expect(screen.getByTestId('menu-item-TraceStatistics')).toBeInTheDocument();
     expect(screen.getByTestId('menu-item-TraceSpansView')).toBeInTheDocument();
+    expect(screen.queryByTestId('menu-item-TraceLogsView')).not.toBeInTheDocument();
     expect(screen.getByTestId('menu-item-TraceFlamegraph')).toBeInTheDocument();
     expect(screen.getByTestId('menu-item-trace-json')).toBeInTheDocument();
     expect(screen.getByTestId('menu-item-trace-json-unadjusted')).toBeInTheDocument();

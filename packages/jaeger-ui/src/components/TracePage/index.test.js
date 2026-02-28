@@ -931,6 +931,8 @@ describe('<TracePage>', () => {
       setStateMock.mockClear();
       instance.setTraceView(ETraceViewType.TraceStatistics);
       expect(setStateMock).toHaveBeenCalledWith({ viewType: ETraceViewType.TraceStatistics });
+
+      setStateMock.mockClear();
     });
 
     it('updates viewRange', () => {

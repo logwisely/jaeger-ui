@@ -37,3 +37,19 @@ SPDX-License-Identifier: Apache-2.0
 .AccordionEvents--footer {
   color: var(--text-secondary);
 }
+
+.AccordionEvents--exceptionItem .AccordionAttributes--header {
+  border-left: 3px solid #cf1322;
+  background: #fff1f0;
+}
+
+.AccordionEvents--exceptionLabel {
+  color: #a8071a;
+  font-weight: 700;
+}
+
+.AccordionEvents--exceptionIcon {
+  color: #cf1322;
+  font-size: 1em;
+  vertical-align: text-bottom;
+}

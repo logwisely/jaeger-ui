@@ -170,14 +170,148 @@ describe('<SpanBarRow>', () => {
     expect(screen.getByText('no-instrumented-service')).toBeVisible();
   });
 
-  it('renders with error icon when hasOwnError is true', () => {
+  it('renders failure icon when hasOwnError is true', () => {
     const props = {
       ...defaultProps,
       hasOwnError: true,
       hasChildError: false,
     };
     render(<SpanBarRow {...props} />);
-    expect(document.querySelector('.SpanBarRow--errorIcon')).toBeInTheDocument();
+    expect(document.querySelector('.SpanBarRow--failureIcon')).toBeInTheDocument();
+  });
+
+  it('renders failure icon when span has error=true attribute', () => {
+    const props = {
+      ...defaultProps,
+      span: {
+        ...defaultProps.span,
+        attributes: [{ key: 'error', value: true }],
+      },
+    };
+    render(<SpanBarRow {...props} />);
+    expect(document.querySelector('.SpanBarRow--failureIcon')).toBeInTheDocument();
+  });
+
+  it('renders failure icon when span has otel.status_code=ERROR attribute', () => {
+    const props = {
+      ...defaultProps,
+      span: {
+        ...defaultProps.span,
+        attributes: [{ key: 'otel.status_code', value: 'ERROR' }],
+      },
+    };
+    render(<SpanBarRow {...props} />);
+    expect(document.querySelector('.SpanBarRow--failureIcon')).toBeInTheDocument();
+  });
+
+  it('renders exception icon when span has exception.type attribute', () => {
+    const props = {
+      ...defaultProps,
+      span: {
+        ...defaultProps.span,
+        attributes: [{ key: 'exception.type', value: 'TypeError' }],
+      },
+    };
+    render(<SpanBarRow {...props} />);
+    expect(document.querySelector('.SpanBarRow--exceptionIcon')).toBeInTheDocument();
+  });
+
+  it('renders client kind icon for CLIENT span', () => {
+    const props = {
+      ...defaultProps,
+      span: {
+        ...defaultProps.span,
+        kind: 'CLIENT',
+        attributes: [],
+      },
+    };
+    render(<SpanBarRow {...props} />);
+    expect(document.querySelector('.SpanBarRow--kindIcon--client')).toBeInTheDocument();
+    expect(document.querySelector('.SpanBarRow--kindIcon--server')).not.toBeInTheDocument();
+  });
+
+  it('renders server kind icon for SERVER span', () => {
+    const props = {
+      ...defaultProps,
+      span: {
+        ...defaultProps.span,
+        kind: 'SERVER',
+        attributes: [],
+      },
+    };
+    render(<SpanBarRow {...props} />);
+    expect(document.querySelector('.SpanBarRow--kindIcon--server')).toBeInTheDocument();
+    expect(document.querySelector('.SpanBarRow--kindIcon--client')).not.toBeInTheDocument();
+  });
+
+  it('does not render kind icons for INTERNAL span', () => {
+    const props = {
+      ...defaultProps,
+      span: {
+        ...defaultProps.span,
+        kind: 'INTERNAL',
+        attributes: [],
+      },
+    };
+    render(<SpanBarRow {...props} />);
+    expect(document.querySelector('.SpanBarRow--kindIcon')).not.toBeInTheDocument();
+  });
+
+  it('renders failure icon when span has exception event', () => {
+    const props = {
+      ...defaultProps,
+      span: {
+        ...defaultProps.span,
+        events: [
+          {
+            timestamp: 101,
+            name: 'exception',
+            attributes: [{ key: 'exception.type', value: 'TimeoutError' }],
+          },
+        ],
+      },
+    };
+    render(<SpanBarRow {...props} />);
+    expect(document.querySelector('.SpanBarRow--exceptionIcon')).toBeInTheDocument();
+  });
+
+  it('does not render failure icon when no failure condition exists', () => {
+    const props = {
+      ...defaultProps,
+      span: {
+        ...defaultProps.span,
+        events: [
+          {
+            timestamp: 101,
+            name: 'normal-event',
+            attributes: [{ key: 'event.key', value: 'value' }],
+          },
+        ],
+      },
+    };
+    render(<SpanBarRow {...props} />);
+    expect(document.querySelector('.SpanBarRow--failureIcon')).not.toBeInTheDocument();
+    expect(document.querySelector('.SpanBarRow--exceptionIcon')).not.toBeInTheDocument();
+  });
+
+  it('shows only one failure icon when both exception event and hasOwnError are present', () => {
+    const props = {
+      ...defaultProps,
+      hasOwnError: true,
+      span: {
+        ...defaultProps.span,
+        events: [
+          {
+            timestamp: 101,
+            name: 'exception',
+            attributes: [{ key: 'exception.type', value: 'TypeError' }],
+          },
+        ],
+      },
+    };
+    render(<SpanBarRow {...props} />);
+    expect(document.querySelectorAll('.SpanBarRow--exceptionIcon')).toHaveLength(1);
+    expect(document.querySelector('.SpanBarRow--failureIcon')).not.toBeInTheDocument();
   });
 
   it('applies is-detail-expanded class when isDetailExpanded is true', () => {

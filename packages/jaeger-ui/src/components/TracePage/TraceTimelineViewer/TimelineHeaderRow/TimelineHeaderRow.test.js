@@ -74,6 +74,8 @@ describe('<TimelineHeaderRow>', () => {
     viewRangeTime: {
       current: [0.1, 0.9],
     },
+    flatView: false,
+    onFlatViewChange: jest.fn(),
   };
 
   it('renders without exploding', () => {
@@ -128,5 +130,15 @@ describe('<TimelineHeaderRow>', () => {
   it('renders the TimelineCollapser', () => {
     render(<TimelineHeaderRow {...props} />);
     expect(screen.getByTestId('timeline-collapser')).toBeInTheDocument();
+  });
+
+  it('hides left tree column in flat view', () => {
+    const { container } = render(<TimelineHeaderRow {...props} flatView />);
+    const cells = container.querySelectorAll('.TimelineRow--cellMock');
+
+    expect(cells).toHaveLength(1);
+    expect(cells[0]).toHaveAttribute('data-width', '1');
+    expect(screen.queryByTestId('timeline-collapser')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('vertical-resizer')).not.toBeInTheDocument();
   });
 });

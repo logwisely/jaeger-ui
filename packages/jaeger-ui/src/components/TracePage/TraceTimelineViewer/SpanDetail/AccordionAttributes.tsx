@@ -48,7 +48,7 @@ export default function AccordionAttributes({
   highContrast?: boolean;
   interactive?: boolean;
   isOpen: boolean;
-  label: string;
+  label: React.ReactNode;
   linksGetter: ((pairs: ReadonlyArray<IAttribute>, index: number) => Hyperlink[]) | TNil;
   onToggle?: null | (() => void);
 }) {

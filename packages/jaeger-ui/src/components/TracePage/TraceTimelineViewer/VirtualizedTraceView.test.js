@@ -235,6 +235,20 @@ describe('<VirtualizedTraceViewImpl>', () => {
     expect(instance.getCollapsedChildren()).toBe(childrenHiddenIDs);
   });
 
+  it('flat view ignores collapsed children and expands detail rows for all spans', () => {
+    const newProps = {
+      ...mockProps,
+      flatView: true,
+      childrenHiddenIDs: new Set([trace.spans[0].spanID]),
+      detailStates: new Map(),
+    };
+    instance = createTestInstance(newProps);
+    const rowStates = instance.getRowStates();
+    expect(rowStates).toHaveLength(trace.spans.length * 2);
+    expect(rowStates[0].isDetail).toBe(false);
+    expect(rowStates[1].isDetail).toBe(true);
+  });
+
   describe('mapRowIndexToSpanIndex() maps row index to span index', () => {
     it('works when nothing is collapsed or expanded', () => {
       const i = trace.spans.length - 1;

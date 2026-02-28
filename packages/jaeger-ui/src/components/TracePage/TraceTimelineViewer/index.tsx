@@ -1,7 +1,7 @@
 // Copyright (c) 2017 Uber Technologies, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators, Dispatch } from 'redux';
 
@@ -62,6 +62,7 @@ export const TraceTimelineViewerImpl = (props: TProps) => {
     useOtelTerms,
     ...rest
   } = props;
+  const [flatView, setFlatView] = useState(false);
 
   const collapseAll = useCallback(() => {
     collapseAllAction(trace.spans);
@@ -80,6 +81,12 @@ export const TraceTimelineViewerImpl = (props: TProps) => {
   }, [expandOneAction, trace.spans]);
 
   useEffect(() => {
+    if (flatView) {
+      expandAllAction();
+    }
+  }, [expandAllAction, flatView]);
+
+  useEffect(() => {
     mergeShortcuts({
       collapseAll,
       expandAll,
@@ -92,7 +99,7 @@ export const TraceTimelineViewerImpl = (props: TProps) => {
     <div className="TraceTimelineViewer">
       <TimelineHeaderRow
         duration={trace.duration}
-        nameColumnWidth={spanNameColumnWidth}
+        nameColumnWidth={flatView ? 0 : spanNameColumnWidth}
         numTicks={NUM_TICKS}
         onCollapseAll={collapseAll}
         onCollapseOne={collapseOne}
@@ -102,10 +109,13 @@ export const TraceTimelineViewerImpl = (props: TProps) => {
         viewRangeTime={viewRange.time}
         updateNextViewRangeTime={updateNextViewRangeTime}
         updateViewRangeTime={updateViewRangeTime}
+        flatView={flatView}
+        onFlatViewChange={setFlatView}
         useOtelTerms={useOtelTerms}
       />
       <VirtualizedTraceView
         {...rest}
+        flatView={flatView}
         trace={trace}
         useOtelTerms={useOtelTerms}
         currentViewRangeTime={viewRange.time.current}

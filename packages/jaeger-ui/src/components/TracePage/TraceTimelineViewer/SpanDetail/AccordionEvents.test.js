@@ -119,6 +119,14 @@ describe('<AccordionEvents>', () => {
     expect(screen.getByRole('button', { name: /show all/i })).toBeInTheDocument();
   });
 
+  it('shows all events by default and hides range toggles when showAllByDefault is true', () => {
+    render(<AccordionEvents {...defaultProps} isOpen showAllByDefault />);
+    expect(screen.getByRole('switch')).toHaveTextContent(`Logs (${defaultTotalCount})`);
+    expect(screen.queryByRole('button', { name: /show all/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /show in range/i })).not.toBeInTheDocument();
+    expect(screen.getAllByTestId('event-item')).toHaveLength(defaultTotalCount);
+  });
+
   it('is interactive by default', () => {
     const { interactive, ...propsWithoutInteractive } = defaultProps;
     render(<AccordionEvents {...propsWithoutInteractive} isOpen />);
@@ -261,5 +269,19 @@ describe('<AccordionEvents> OTEL specifics', () => {
         interactive: true,
       })
     );
+  });
+
+  it('adds exception icon/label for exception events', () => {
+    const exceptionEvents = [
+      {
+        timestamp: 10,
+        name: 'exception',
+        attributes: [{ key: 'exception.type', value: 'TypeError' }],
+      },
+    ];
+    render(<AccordionEvents {...defaultProps} events={exceptionEvents} />);
+    const passedProps = mockAccordionAttributes.mock.calls[0][0];
+    expect(passedProps.className).toContain('AccordionEvents--exceptionItem');
+    expect(passedProps.label).toEqual(expect.any(Object));
   });
 });

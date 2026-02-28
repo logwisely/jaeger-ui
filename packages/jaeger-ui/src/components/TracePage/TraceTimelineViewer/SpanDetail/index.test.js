@@ -195,22 +195,69 @@ describe('<SpanDetail>', () => {
   it('displays the span operation name as the main heading', () => {
     render(<SpanDetail {...props} />);
     const heading = screen.getByRole('heading', { level: 2 });
-    expect(heading).toHaveTextContent(span.name);
+    expect(heading).toHaveTextContent(new RegExp(`Operation:\\s*${span.name}`));
   });
 
-  it('renders overview items with service name, duration and start time labels', () => {
+  it('in flat view, shows service name on the left side title and omits duplicate service and duration overview rows', () => {
+    render(<SpanDetail {...props} flatView />);
+    const heading = screen.getByRole('heading', { level: 2 });
+    expect(heading).toHaveTextContent(span.resource.serviceName);
+    expect(heading).toHaveTextContent(new RegExp(`Operation:\\s*${span.name}`));
+    expect(screen.queryByTestId('item-svc')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('item-duration')).not.toBeInTheDocument();
+  });
+
+  it('renders only start time in overview items to avoid duplicating title fields', () => {
     render(<SpanDetail {...props} />);
 
     const labeledList = screen.getByTestId('labeled-list');
     expect(labeledList).toBeInTheDocument();
 
-    expect(screen.getByTestId('item-svc')).toBeInTheDocument();
-    expect(screen.getByTestId('item-duration')).toBeInTheDocument();
+    expect(screen.queryByTestId('item-svc')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('item-duration')).not.toBeInTheDocument();
     expect(screen.getByTestId('item-start')).toBeInTheDocument();
 
-    expect(screen.getByTestId('item-svc')).toHaveTextContent('Service:');
-    expect(screen.getByTestId('item-duration')).toHaveTextContent('Duration:');
     expect(screen.getByTestId('item-start')).toHaveTextContent('Start Time:');
+  });
+
+  it('renders exception and client/server icons next to service name in overview title', () => {
+    const exceptionClientSpan = {
+      name: span.name,
+      resource: span.resource,
+      duration: span.duration,
+      relativeStartTime: span.relativeStartTime,
+      spanID: span.spanID,
+      kind: 'CLIENT',
+      attributes: [{ key: 'exception.type', value: 'TypeError' }],
+      events: [],
+      warnings: span.warnings,
+      links: span.links,
+    };
+    const { container } = render(<SpanDetail {...props} span={exceptionClientSpan} />);
+    expect(container.querySelector('.SpanDetail--statusIcon--exception')).toBeInTheDocument();
+    expect(container.querySelector('.SpanDetail--kindIcon--client')).toBeInTheDocument();
+  });
+
+  it('highlights duration in flat view for critical path and makes it red when over 1s', () => {
+    const longDurationSpan = {
+      name: span.name,
+      resource: span.resource,
+      duration: 2_000_000,
+      relativeStartTime: span.relativeStartTime,
+      startTime: span.startTime,
+      spanID: span.spanID,
+      kind: span.kind,
+      attributes: span.attributes,
+      events: span.events,
+      warnings: span.warnings,
+      links: span.links,
+    };
+    const { container } = render(
+      <SpanDetail {...props} flatView isCriticalPathSpan span={longDurationSpan} />
+    );
+    const durationPart = container.querySelector('.SpanDetail--titlePart.is-critical-path.is-long-duration');
+    expect(durationPart).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Duration:');
   });
 
   it('renders span tags accordian and triggers toggle callback with span ID', () => {
