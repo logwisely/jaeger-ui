@@ -66,7 +66,7 @@ const defaultConfig: Config = {
     },
     maxLimit: 1500,
   },
-  traceIdDisplayLength: 7,
+  traceIdDisplayLength: 8,
   storageCapabilities: {
     archiveStorage: false,
   },

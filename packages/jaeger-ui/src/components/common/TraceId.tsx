@@ -13,9 +13,9 @@ type Props = {
 
 export function TraceId({ traceId, className = '' }: Props) {
   if (!traceId) return null;
-  const traceIdDisplayLength = getConfigValue('traceIdDisplayLength') || 7;
-  const traceIdDisplay = traceId ? traceId.slice(0, traceIdDisplayLength) : '';
-  const lengthClass = traceIdDisplayLength === 7 ? 'TraceIDLength--short' : 'TraceIDLength--full';
+  const traceIdDisplayLength = getConfigValue('traceIdDisplayLength') || 8;
+  const traceIdDisplay = traceId ? traceId.slice(-traceIdDisplayLength) : '';
+  const lengthClass = traceIdDisplayLength === 8 ? 'TraceIDLength--short' : 'TraceIDLength--full';
 
   return (
     <ClickToCopy text={traceId} className="button-styles">
