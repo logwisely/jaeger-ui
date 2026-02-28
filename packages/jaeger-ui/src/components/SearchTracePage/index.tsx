@@ -95,7 +95,7 @@ export function SearchTracePageImpl(props: SearchTracePageImplProps) {
   } = props;
 
   const config = useConfig();
-  const { disableFileUploadControl } = config;
+  const { disableFileUploadControl, showTraceUpload, showAIAssistant } = config;
   const [sortBy, setSortBy] = useState(orderBy.MOST_RECENT);
   const [leftPaneWidth, setLeftPaneWidth] = useState(25); // percentage
   const [isResizing, setIsResizing] = useState(false);
@@ -176,12 +176,14 @@ export function SearchTracePageImpl(props: SearchTracePageImplProps) {
     key: 'searchForm',
     children: <SearchForm key={JSON.stringify(urlQueryParams)} />,
   });
-  tabItems.push({
-    label: 'AI Assistant',
-    key: 'AIAssistant',
-    children: <AIAssistantSearch />,
-  });
-  if (!disableFileUploadControl) {
+  if (showAIAssistant) {
+    tabItems.push({
+      label: 'AI Assistant',
+      key: 'AIAssistant',
+      children: <AIAssistantSearch />,
+    });
+  }
+  if (showTraceUpload && !disableFileUploadControl) {
     tabItems.push({
       label: 'Upload',
       key: 'fileLoader',

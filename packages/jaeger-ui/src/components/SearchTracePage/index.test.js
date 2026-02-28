@@ -261,21 +261,48 @@ describe('<SearchTracePage>', () => {
     expect(container.querySelector('.js-test-logo')).not.toBeInTheDocument();
   });
 
-  it('shows Upload tab by default', () => {
+  it('hides Upload tab by default', () => {
     const { container } = render(
       <AllProvider>
         <SearchTracePage {...props} />
       </AllProvider>
     );
-    expect(container.querySelector('[data-node-key="fileLoader"]')).toBeInTheDocument();
+    expect(container.querySelector('[data-node-key="fileLoader"]')).not.toBeInTheDocument();
   });
 
-  it('hides Upload tab if it is disabled via config', () => {
-    // Create a custom store with disableFileUploadControl: true
+  it('shows Upload tab only when UI flag is enabled', () => {
+    // Create a custom store with showTraceUpload: true
     const customStore = require('redux').createStore(() => ({
       ...globalStore.getState(),
       config: {
         ...globalStore.getState().config,
+        showTraceUpload: true,
+      },
+    }));
+
+    const { container } = render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <Provider store={customStore}>
+            <MemoryRouter>
+              <CompatRouter>
+                <SearchTracePage {...props} />
+              </CompatRouter>
+            </MemoryRouter>
+          </Provider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+    expect(container.querySelector('[data-node-key="fileLoader"]')).toBeInTheDocument();
+  });
+
+  it('hides Upload tab when disabled via config even if UI flag is enabled', () => {
+    // Create a custom store with showTraceUpload: true and disableFileUploadControl: true
+    const customStore = require('redux').createStore(() => ({
+      ...globalStore.getState(),
+      config: {
+        ...globalStore.getState().config,
+        showTraceUpload: true,
         disableFileUploadControl: true,
       },
     }));
@@ -294,6 +321,40 @@ describe('<SearchTracePage>', () => {
       </QueryClientProvider>
     );
     expect(container.querySelector('[data-node-key="fileLoader"]')).not.toBeInTheDocument();
+  });
+
+  it('hides AI Assistant tab by default', () => {
+    const { container } = render(
+      <AllProvider>
+        <SearchTracePage {...props} />
+      </AllProvider>
+    );
+    expect(container.querySelector('[data-node-key="AIAssistant"]')).not.toBeInTheDocument();
+  });
+
+  it('shows AI Assistant tab only when UI flag is enabled', () => {
+    const customStore = require('redux').createStore(() => ({
+      ...globalStore.getState(),
+      config: {
+        ...globalStore.getState().config,
+        showAIAssistant: true,
+      },
+    }));
+
+    const { container } = render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <Provider store={customStore}>
+            <MemoryRouter>
+              <CompatRouter>
+                <SearchTracePage {...props} />
+              </CompatRouter>
+            </MemoryRouter>
+          </Provider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+    expect(container.querySelector('[data-node-key="AIAssistant"]')).toBeInTheDocument();
   });
 });
 

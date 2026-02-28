@@ -180,6 +180,14 @@ export type Config = {
   // Disables the file upload control.
   disableFileUploadControl: boolean;
 
+  // Shows the Trace Upload tab in Search page when true.
+  // Hidden by default.
+  showTraceUpload?: boolean;
+
+  // Shows the AI Assistant tab in Search page when true.
+  // Hidden by default.
+  showAIAssistant?: boolean;
+
   // Disables the json view.
   disableJsonView: boolean;
 
