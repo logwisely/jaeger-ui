@@ -44,6 +44,8 @@ describe('<TraceTimelineViewer>', () => {
     collapseAll: jest.fn(),
     expandOne: jest.fn(),
     collapseOne: jest.fn(),
+    flatView: false,
+    onFlatViewChange: jest.fn(),
   };
 
   const defaultState = {

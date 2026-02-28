@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import '@testing-library/jest-dom';
 import TracePageHeaderWithRef, {
@@ -164,6 +164,21 @@ describe('<TracePageHeader>', () => {
         expect(headerItem).toHaveTextContent(renderedValue.toString());
       }
     });
+  });
+
+  it('renders view mode toggle in summary panel for timeline view', () => {
+    const onFlatViewChange = jest.fn();
+    renderWithRouter(
+      <TracePageHeader
+        {...defaultProps}
+        viewType={ETraceViewType.TraceTimelineViewer}
+        onFlatViewChange={onFlatViewChange}
+      />
+    );
+    const viewModeItem = screen.getByTestId('header-item-view-mode');
+    expect(viewModeItem).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Flat View'));
+    expect(onFlatViewChange).toHaveBeenCalledWith(true);
   });
 
   it('renders a <SpanGraph>', () => {

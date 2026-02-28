@@ -1,7 +1,7 @@
 // Copyright (c) 2017 Uber Technologies, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators, Dispatch } from 'redux';
 
@@ -36,6 +36,7 @@ type TProps = TDispatchProps & {
   updateViewRangeTime: TUpdateViewRangeTimeFunction;
   viewRange: IViewRange;
   useOtelTerms: boolean;
+  flatView: boolean;
 };
 
 const NUM_TICKS = 5;
@@ -60,9 +61,9 @@ export const TraceTimelineViewerImpl = (props: TProps) => {
     trace,
     spanNameColumnWidth,
     useOtelTerms,
+    flatView,
     ...rest
   } = props;
-  const [flatView, setFlatView] = useState(false);
 
   const collapseAll = useCallback(() => {
     collapseAllAction(trace.spans);
@@ -110,7 +111,6 @@ export const TraceTimelineViewerImpl = (props: TProps) => {
         updateNextViewRangeTime={updateNextViewRangeTime}
         updateViewRangeTime={updateViewRangeTime}
         flatView={flatView}
-        onFlatViewChange={setFlatView}
         useOtelTerms={useOtelTerms}
       />
       <VirtualizedTraceView

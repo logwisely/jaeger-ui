@@ -2,8 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from 'react';
-import { Radio } from 'antd';
-
 import VerticalResizer from '../../../common/VerticalResizer';
 import TimelineCollapser from './TimelineCollapser';
 import TimelineViewingLayer from './TimelineViewingLayer';
@@ -27,7 +25,6 @@ type TimelineHeaderRowProps = {
   updateViewRangeTime: TUpdateViewRangeTimeFunction;
   viewRangeTime: IViewRangeTime;
   flatView: boolean;
-  onFlatViewChange: (isFlatView: boolean) => void;
   useOtelTerms: boolean;
 };
 
@@ -45,7 +42,6 @@ export default function TimelineHeaderRow(props: TimelineHeaderRowProps) {
     updateNextViewRangeTime,
     viewRangeTime,
     flatView,
-    onFlatViewChange,
   } = props;
   const [viewStart, viewEnd] = viewRangeTime.current;
   const startTime = (viewStart * duration) as IOtelSpan['startTime'];
@@ -67,17 +63,6 @@ export default function TimelineHeaderRow(props: TimelineHeaderRowProps) {
         </TimelineRow.Cell>
       )}
       <TimelineRow.Cell width={rightColumnWidth}>
-        <div className="TimelineHeaderRow--viewMode">
-          <Radio.Group
-            className="TimelineHeaderRow--viewModeToggle"
-            size="small"
-            value={flatView ? 'flat' : 'tree'}
-            onChange={evt => onFlatViewChange(evt.target.value === 'flat')}
-          >
-            <Radio.Button value="tree">Tree View</Radio.Button>
-            <Radio.Button value="flat">Flat View</Radio.Button>
-          </Radio.Group>
-        </div>
         <TimelineViewingLayer
           boundsInvalidator={nameColumnWidth}
           updateNextViewRangeTime={updateNextViewRangeTime}

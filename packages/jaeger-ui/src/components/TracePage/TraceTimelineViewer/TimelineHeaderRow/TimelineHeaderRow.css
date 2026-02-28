@@ -31,25 +31,3 @@ SPDX-License-Identifier: Apache-2.0
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-.TimelineHeaderRow--viewMode {
-  position: absolute;
-  top: 4px;
-  right: 8px;
-  z-index: 6;
-  line-height: normal;
-}
-
-.TimelineHeaderRow--viewModeToggle .ant-radio-button-wrapper {
-  border-color: #91caff;
-  color: #1f1f1f;
-  font-weight: 500;
-}
-
-.TimelineHeaderRow--viewModeToggle .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
-  background: #1677ff;
-  border-color: #1677ff;
-  box-shadow: none;
-  color: #fff;
-  font-weight: 700;
-}

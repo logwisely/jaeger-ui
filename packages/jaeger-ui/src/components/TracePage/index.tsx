@@ -86,6 +86,7 @@ type TProps = TDispatchProps & TOwnProps & TReduxProps;
 type TState = {
   headerHeight: number | TNil;
   slimView: boolean;
+  flatView: boolean;
   viewType: ETraceViewType;
   viewRange: IViewRange;
 };
@@ -134,6 +135,7 @@ export class TracePageImpl extends React.PureComponent<TProps, TState> {
     this.state = {
       headerHeight: null,
       slimView: Boolean(embedded && embedded.timeline.collapseTitle),
+      flatView: false,
       viewType: ETraceViewType.TraceTimelineViewer,
       viewRange: {
         time: {
@@ -328,7 +330,7 @@ export class TracePageImpl extends React.PureComponent<TProps, TState> {
       traceGraphConfig,
       location: { state: locationState },
     } = this.props;
-    const { slimView, viewType, headerHeight, viewRange } = this.state;
+    const { slimView, flatView, viewType, headerHeight, viewRange } = this.state;
     if (!trace || trace.state === fetchedState.LOADING) {
       return <LoadingIndicator className="u-mt-vast" centered />;
     }
@@ -382,6 +384,8 @@ export class TracePageImpl extends React.PureComponent<TProps, TState> {
       updateNextViewRangeTime: this.updateNextViewRangeTime,
       updateViewRangeTime: this.updateViewRangeTime,
       useOtelTerms: this.props.useOtelTerms,
+      flatView,
+      onFlatViewChange: (isFlatView: boolean) => this.setState({ flatView: isFlatView }),
     };
 
     let view;
@@ -398,6 +402,7 @@ export class TracePageImpl extends React.PureComponent<TProps, TState> {
           updateViewRangeTime={this.updateViewRangeTime}
           viewRange={viewRange}
           useOtelTerms={this.props.useOtelTerms}
+          flatView={flatView}
         />
       );
     } else if (ETraceViewType.TraceGraph === viewType && headerHeight) {

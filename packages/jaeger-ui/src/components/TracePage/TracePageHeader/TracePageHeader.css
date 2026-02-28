@@ -84,6 +84,17 @@ SPDX-License-Identifier: Apache-2.0
 .TracePageHeader--overviewItems {
   border-bottom: 1px solid var(--border-default);
   padding: 0.25rem 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+}
+
+.TracePageHeader--overviewItems .LabeledList--item {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 0;
+  white-space: nowrap;
 }
 
 .TracePageHeader--overviewItem--valueDetail {
@@ -111,4 +122,37 @@ SPDX-License-Identifier: Apache-2.0
   font-size: 1.1em;
   margin-right: 0.25em;
   vertical-align: middle;
+}
+
+.TracePageHeader--viewModeToggle .ant-radio-button-wrapper {
+  border-color: #91caff;
+  color: #1f1f1f;
+  font-weight: 500;
+}
+
+.TracePageHeader--viewModeToggle .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+  background: #1677ff;
+  border-color: #1677ff;
+  box-shadow: none;
+  color: #fff;
+  font-weight: 700;
+}
+
+.TracePageHeader--viewModeValue {
+  display: inline-flex;
+  align-items: center;
+}
+
+.TracePageHeader--viewModeToggle {
+  line-height: 1;
+}
+
+@media (max-width: 1024px) {
+  .TracePageHeader--overviewItems {
+    gap: 0.3rem 0.5rem;
+  }
+
+  .TracePageHeader--viewModeToggle .ant-radio-button-wrapper {
+    padding-inline: 8px;
+  }
 }
