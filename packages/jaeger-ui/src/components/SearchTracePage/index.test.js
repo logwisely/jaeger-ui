@@ -20,9 +20,9 @@ jest.mock('../../hooks/useTraceDiscovery', () => ({
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import store from 'store';
 
 import { Provider } from 'react-redux';
+import { createStore } from 'redux';
 import { SearchTracePageImpl as SearchTracePage, mapStateToProps } from './index';
 import { fetchedState } from '../../constants';
 import traceGenerator from '../../demo/trace-generators';
@@ -87,6 +87,30 @@ describe('<SearchTracePage>', () => {
     traces = props.traces;
     traceResultsToDownload = props.traceResultsToDownload;
   });
+
+  const renderWithConfig = configOverrides => {
+    const customStore = createStore(() => ({
+      ...globalStore.getState(),
+      config: {
+        ...globalStore.getState().config,
+        ...configOverrides,
+      },
+    }));
+
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <Provider store={customStore}>
+            <MemoryRouter>
+              <CompatRouter>
+                <SearchTracePage {...props} />
+              </CompatRouter>
+            </MemoryRouter>
+          </Provider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+  };
 
   it('searches for traces if `service` or `traceID` are in the query string', () => {
     render(
@@ -261,38 +285,45 @@ describe('<SearchTracePage>', () => {
     expect(container.querySelector('.js-test-logo')).not.toBeInTheDocument();
   });
 
-  it('shows Upload tab by default', () => {
+  it('hides AI Assistant and Upload tabs', () => {
     const { container } = render(
       <AllProvider>
         <SearchTracePage {...props} />
       </AllProvider>
     );
+    expect(container.querySelector('[data-node-key="AIAssistant"]')).not.toBeInTheDocument();
+    expect(container.querySelector('[data-node-key="fileLoader"]')).not.toBeInTheDocument();
+  });
+
+  it('shows AI Assistant tab when enabled by config', () => {
+    const { container } = renderWithConfig({
+      search: {
+        ...globalStore.getState().config.search,
+        showAIAssistantTab: true,
+      },
+    });
+    expect(container.querySelector('[data-node-key="AIAssistant"]')).toBeInTheDocument();
+  });
+
+  it('shows Upload tab when enabled by config', () => {
+    const { container } = renderWithConfig({
+      disableFileUploadControl: false,
+      search: {
+        ...globalStore.getState().config.search,
+        showUploadTab: true,
+      },
+    });
     expect(container.querySelector('[data-node-key="fileLoader"]')).toBeInTheDocument();
   });
 
-  it('hides Upload tab if it is disabled via config', () => {
-    // Create a custom store with disableFileUploadControl: true
-    const customStore = require('redux').createStore(() => ({
-      ...globalStore.getState(),
-      config: {
-        ...globalStore.getState().config,
-        disableFileUploadControl: true,
+  it('hides Upload tab when globally disabled even if enabled by config', () => {
+    const { container } = renderWithConfig({
+      disableFileUploadControl: true,
+      search: {
+        ...globalStore.getState().config.search,
+        showUploadTab: true,
       },
-    }));
-
-    const { container } = render(
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <Provider store={customStore}>
-            <MemoryRouter>
-              <CompatRouter>
-                <SearchTracePage {...props} />
-              </CompatRouter>
-            </MemoryRouter>
-          </Provider>
-        </BrowserRouter>
-      </QueryClientProvider>
-    );
+    });
     expect(container.querySelector('[data-node-key="fileLoader"]')).not.toBeInTheDocument();
   });
 });

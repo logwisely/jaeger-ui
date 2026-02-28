@@ -65,6 +65,8 @@ const defaultConfig: Config = {
       value: '2d',
     },
     maxLimit: 1500,
+    showAIAssistantTab: false,
+    showUploadTab: false,
   },
   traceIdDisplayLength: 7,
   storageCapabilities: {

@@ -7,9 +7,7 @@ import { Tabs, Button } from 'antd';
 import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import { connect } from 'react-redux';
 import { bindActionCreators, Dispatch } from 'redux';
-import store from 'store';
 import memoizeOne from 'memoize-one';
-
 import { useConfig } from '../../hooks/useConfig';
 
 import SearchForm from './SearchForm';
@@ -93,9 +91,7 @@ export function SearchTracePageImpl(props: SearchTracePageImplProps) {
     sortedTracesXformer,
     traces,
   } = props;
-
   const config = useConfig();
-  const { disableFileUploadControl } = config;
   const [sortBy, setSortBy] = useState(orderBy.MOST_RECENT);
   const [leftPaneWidth, setLeftPaneWidth] = useState(25); // percentage
   const [isResizing, setIsResizing] = useState(false);
@@ -168,6 +164,8 @@ export function SearchTracePageImpl(props: SearchTracePageImplProps) {
   const hasTraceResults = traceResults && traceResults.length > 0;
   const showErrors = errors && !loadingTraces;
   const showLogo = isHomepage && !hasTraceResults && !loadingTraces && !errors;
+  const showAIAssistantTab = Boolean(config.search?.showAIAssistantTab);
+  const showUploadTab = Boolean(config.search?.showUploadTab) && !config.disableFileUploadControl;
 
   const tabItems = [];
   // Always show the search form, loading is handled by SearchForm
@@ -176,12 +174,14 @@ export function SearchTracePageImpl(props: SearchTracePageImplProps) {
     key: 'searchForm',
     children: <SearchForm key={JSON.stringify(urlQueryParams)} />,
   });
-  tabItems.push({
-    label: 'AI Assistant',
-    key: 'AIAssistant',
-    children: <AIAssistantSearch />,
-  });
-  if (!disableFileUploadControl) {
+  if (showAIAssistantTab) {
+    tabItems.push({
+      label: 'AI Assistant',
+      key: 'AIAssistant',
+      children: <AIAssistantSearch />,
+    });
+  }
+  if (showUploadTab) {
     tabItems.push({
       label: 'Upload',
       key: 'fileLoader',

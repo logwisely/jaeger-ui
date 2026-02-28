@@ -125,6 +125,14 @@ export type Config = {
     // Examples: "1m" for 1 minute, "30s" for 30 seconds.
     // Default is undefined (no adjustment).
     adjustEndTime?: string;
+
+    // showAIAssistantTab enables AI Assistant tab in Search panel.
+    // Default is false (tab hidden).
+    showAIAssistantTab?: boolean;
+
+    // showUploadTab enables Upload tab in Search panel.
+    // Default is false (tab hidden).
+    showUploadTab?: boolean;
   };
 
   // scripts is an array of URLs of additional JavaScript files to be loaded.
