@@ -275,6 +275,21 @@ type TagClause = {
   value: string;
 };
 
+const ERROR_TAG_KEY = 'error';
+const ERROR_TAG_VALUE_TRUE = 'true';
+
+function normalizeTagPart(value: string): string {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+function isErrorTrueClause(clause: TagClause): boolean {
+  return (
+    normalizeTagPart(clause.key) === ERROR_TAG_KEY &&
+    clause.operator === '==' &&
+    normalizeTagPart(clause.value) === ERROR_TAG_VALUE_TRUE
+  );
+}
+
 function parseLogfmtTagsToClauses(tags: string | null | undefined): TagClause[] {
   if (!tags) {
     return [{ key: '', operator: '==', value: '' }];
@@ -493,6 +508,42 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
     }
   }, [computedTags, formData.tags, handleChange]);
 
+  const isErrorOnlyEnabled = useMemo(() => tagClauses.some(isErrorTrueClause), [tagClauses]);
+  const handleErrorOnlyToggle = useCallback(
+    (checked: boolean) => {
+      setTagClauses(prevClauses => {
+        if (checked) {
+          const existingIndex = prevClauses.findIndex(c => normalizeTagPart(c.key) === ERROR_TAG_KEY);
+          if (existingIndex >= 0) {
+            const next = [...prevClauses];
+            next[existingIndex] = {
+              ...next[existingIndex],
+              key: ERROR_TAG_KEY,
+              operator: '==',
+              value: ERROR_TAG_VALUE_TRUE,
+            };
+            return next;
+          }
+
+          const emptyIndex = prevClauses.findIndex(
+            c => !normalizeTagPart(c.key) && !normalizeTagPart(c.value)
+          );
+          if (emptyIndex >= 0) {
+            const next = [...prevClauses];
+            next[emptyIndex] = { key: ERROR_TAG_KEY, operator: '==', value: ERROR_TAG_VALUE_TRUE };
+            return next;
+          }
+
+          return [...prevClauses, { key: ERROR_TAG_KEY, operator: '==', value: ERROR_TAG_VALUE_TRUE }];
+        }
+
+        const next = prevClauses.filter(c => !isErrorTrueClause(c));
+        return next.length ? next : [{ key: '', operator: '==', value: '' }];
+      });
+    },
+    [setTagClauses]
+  );
+
   const {
     service: selectedService,
     operation: selectedOperation,
@@ -545,7 +596,11 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
     }
 
     const timer = setTimeout(() => {
-      submitFormHandler(formData as ISearchFormFields, searchAdjustEndTime, adjustTimeEnabled);
+      submitFormHandler(
+        { ...(formData as ISearchFormFields), tags: computedTags },
+        searchAdjustEndTime,
+        adjustTimeEnabled
+      );
       setLastImpatientRefresh(Date.now());
     }, 500); // Debounce by 500ms to avoid too many requests while editing filters
     return () => clearTimeout(timer);
@@ -558,6 +613,7 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
     adjustTimeEnabled,
     submitFormHandler,
     formData,
+    computedTags,
     setLastImpatientRefresh,
   ]);
 
@@ -572,7 +628,11 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
       if (now - lastImpatientRefreshMs < IMPATIENT_REFRESH_INTERVAL_MS) {
         return;
       }
-      submitFormHandler(formData as ISearchFormFields, searchAdjustEndTime, adjustTimeEnabled);
+      submitFormHandler(
+        { ...(formData as ISearchFormFields), tags: computedTags },
+        searchAdjustEndTime,
+        adjustTimeEnabled
+      );
       setLastImpatientRefresh(now);
     }, IMPATIENT_REFRESH_INTERVAL_MS);
 
@@ -585,6 +645,7 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
     searchAdjustEndTime,
     adjustTimeEnabled,
     submitFormHandler,
+    computedTags,
     lastImpatientRefreshMs,
     setLastImpatientRefresh,
   ]);
@@ -597,9 +658,13 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      submitFormHandler(formData as ISearchFormFields, searchAdjustEndTime, adjustTimeEnabled);
+      submitFormHandler(
+        { ...(formData as ISearchFormFields), tags: computedTags },
+        searchAdjustEndTime,
+        adjustTimeEnabled
+      );
     },
-    [formData, searchAdjustEndTime, adjustTimeEnabled, submitFormHandler]
+    [formData, computedTags, searchAdjustEndTime, adjustTimeEnabled, submitFormHandler]
   );
 
   const noSelectedService = selectedService === '-' || !selectedService;
@@ -819,6 +884,17 @@ export const SearchFormImpl: React.FC<ISearchFormImplProps> = ({
         }
       >
         <div>
+          <div style={{ marginBottom: 8 }}>
+            <Switch
+              data-testid="error-true-toggle"
+              aria-label="Traces with Errors"
+              checked={isErrorOnlyEnabled}
+              disabled={submitting}
+              onChange={handleErrorOnlyToggle}
+            />
+            <span style={{ marginLeft: '8px', fontSize: '12px' }}>Traces with Errors</span>
+          </div>
+
           {tagClauses.map((clause, idx) => {
             const suggestedValues = attributeValueSuggestions[idx] || [];
             const availableAttributeNames = getAvailableAttributeNames(attributeNameOptions, tagClauses, idx);

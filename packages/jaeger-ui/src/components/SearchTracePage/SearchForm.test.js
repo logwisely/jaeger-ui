@@ -593,6 +593,57 @@ describe('<SearchForm>', () => {
     expect(container.querySelector('[aria-label="Remove clause 1"]')).toBeInTheDocument();
   });
 
+  it('adds and removes an error=true clause via the "Traces with Errors" toggle', async () => {
+    const submitFormHandler = jest.fn();
+    const { container, getByRole } = render(
+      <SearchForm
+        {...defaultProps}
+        submitFormHandler={submitFormHandler}
+        initialValues={{ service: 'svcA' }}
+      />
+    );
+
+    const errorToggle = getByRole('switch', { name: /traces with errors/i });
+    expect(errorToggle).toHaveAttribute('aria-checked', 'false');
+
+    fireEvent.click(errorToggle);
+
+    // Submit immediately; tags should include error=true even if formData.tags hasn't synced yet.
+    fireEvent.submit(container.querySelector('form'));
+    await waitFor(() => expect(submitFormHandler).toHaveBeenCalled());
+    const [fieldsImmediate] = submitFormHandler.mock.calls[0];
+    expect(fieldsImmediate.tags).toContain('error=true');
+
+    submitFormHandler.mockClear();
+
+    await waitFor(() =>
+      expect(container.querySelector('[data-testid="mock-select-tag-attribute-1"]')).toHaveAttribute(
+        'data-value',
+        'error'
+      )
+    );
+
+    fireEvent.submit(container.querySelector('form'));
+    await waitFor(() => expect(submitFormHandler).toHaveBeenCalled());
+    const [fields] = submitFormHandler.mock.calls[0];
+    expect(fields.tags).toContain('error=true');
+
+    fireEvent.click(errorToggle);
+
+    await waitFor(() => {
+      const attrSelect = container.querySelector('[data-testid="mock-select-tag-attribute-1"]');
+      expect(attrSelect.getAttribute('data-value')).not.toBe('error');
+    });
+  });
+
+  it('initializes the error toggle from tags=error=true', () => {
+    const { getByRole } = render(
+      <SearchForm {...defaultProps} initialValues={{ service: 'svcA', tags: 'error=true' }} />
+    );
+
+    expect(getByRole('switch', { name: /traces with errors/i })).toHaveAttribute('aria-checked', 'true');
+  });
+
   it('prevents default form submission behavior', async () => {
     const { container } = render(
       <SearchForm {...defaultProps} searchAdjustEndTime="1m" initialValues={{ service: 'svcA' }} />
