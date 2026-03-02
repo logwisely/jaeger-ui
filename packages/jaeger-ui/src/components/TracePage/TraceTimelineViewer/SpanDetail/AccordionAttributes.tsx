@@ -9,7 +9,7 @@ import * as markers from './AccordionAttributes.markers';
 import AttributesTable from './AttributesTable';
 import { TNil } from '../../../../types';
 import { Hyperlink } from '../../../../types/hyperlink';
-import { IAttribute } from '../../../../types/otel';
+import { IAttribute, IOtelSpan } from '../../../../types/otel';
 
 import './AccordionAttributes.css';
 
@@ -41,6 +41,7 @@ export default function AccordionAttributes({
   isOpen,
   label,
   linksGetter,
+  span,
   onToggle = null,
 }: {
   className?: string | TNil;
@@ -50,6 +51,7 @@ export default function AccordionAttributes({
   isOpen: boolean;
   label: React.ReactNode;
   linksGetter: ((pairs: ReadonlyArray<IAttribute>, index: number) => Hyperlink[]) | TNil;
+  span?: IOtelSpan;
   onToggle?: null | (() => void);
 }) {
   const isEmpty = !Array.isArray(data) || !data.length;
@@ -81,7 +83,20 @@ export default function AccordionAttributes({
         </strong>
         {!isOpen && <AttributesSummary data={data} />}
       </div>
-      {isOpen && <AttributesTable data={data} linksGetter={linksGetter} />}
+      {isOpen && (
+        <AttributesTable
+          data={data}
+          linksGetter={linksGetter}
+          searchContext={
+            span
+              ? {
+                  serviceName: span.resource.serviceName,
+                  operationName: span.name,
+                }
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 }

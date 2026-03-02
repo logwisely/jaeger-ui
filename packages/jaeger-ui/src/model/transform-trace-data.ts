@@ -71,6 +71,8 @@ export default function transformTraceData(data: TraceData & { spans: SpanData[]
   let traceStartTime = Number.MAX_SAFE_INTEGER;
   const spanIdCounts = new Map<string, number>();
   const spanMap = new Map<string, Span>();
+  const orderedProcessIDs = new Set<string>();
+  const topTagPrefixes = getConfigValue('topTagPrefixes');
 
   // Filter out spans with empty start times
   data.spans = data.spans.filter(span => Boolean(span.startTime));
@@ -97,6 +99,12 @@ export default function transformTraceData(data: TraceData & { spans: SpanData[]
     }
     span.process = data.processes[processID] || { serviceName: 'unknown-service' };
     span.process.tags = span.process.tags || [];
+    if (processID && !orderedProcessIDs.has(processID)) {
+      span.process.tags = orderTags(span.process.tags, topTagPrefixes);
+      orderedProcessIDs.add(processID);
+    } else if (!processID) {
+      span.process.tags = orderTags(span.process.tags, topTagPrefixes);
+    }
     span.tags = span.tags || [];
     span.logs = span.logs || [];
     span.logs.forEach(log => {
@@ -107,7 +115,7 @@ export default function transformTraceData(data: TraceData & { spans: SpanData[]
     span.subsidiarilyReferencedBy = [];
 
     const tagsInfo = deduplicateTags(span.tags);
-    span.tags = orderTags(tagsInfo.tags, getConfigValue('topTagPrefixes'));
+    span.tags = orderTags(tagsInfo.tags, topTagPrefixes);
     span.warnings = span.warnings || [];
     if (tagsInfo.warnings && tagsInfo.warnings.length > 0) {
       (span.warnings as string[]).push(...tagsInfo.warnings);

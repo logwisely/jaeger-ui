@@ -3,10 +3,17 @@
 
 import * as React from 'react';
 import { Dropdown, Tooltip } from 'antd';
-import { IoOpenOutline, IoList, IoCopyOutline, IoInformationCircleOutline } from 'react-icons/io5';
+import {
+  IoOpenOutline,
+  IoList,
+  IoCopyOutline,
+  IoInformationCircleOutline,
+  IoSearchOutline,
+} from 'react-icons/io5';
 import { JsonView, allExpanded, collapseAllNested, defaultStyles } from 'react-json-view-lite';
 
 import CopyIcon from '../../../common/CopyIcon';
+import { getUrl as getSearchUrl } from '../../../SearchTracePage/url';
 
 import { TNil } from '../../../../types';
 import { Hyperlink } from '../../../../types/hyperlink';
@@ -117,15 +124,36 @@ const linkValueList = (links: Hyperlink[]) => {
   }));
 };
 
+function formatAttributeValueForSearch(value: IAttribute['value']): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (value instanceof Uint8Array) {
+    return Array.from(value).join(',');
+  }
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch (_) {
+      return String(value);
+    }
+  }
+  return String(value);
+}
+
 type AttributesTableProps = {
   data: ReadonlyArray<IAttribute>;
   linksGetter: ((pairs: ReadonlyArray<IAttribute>, index: number) => Hyperlink[]) | TNil;
+  searchContext?: {
+    serviceName: string;
+    operationName: string;
+  };
 };
 
 // AttributesTable is displayed as a menu at span level.
 // Example: https://github.com/jaegertracing/jaeger-ui/assets/94157520/b518cad9-cb37-4775-a3d6-b667a1235f89
 export default function AttributesTable(props: AttributesTableProps) {
-  const { data, linksGetter } = props;
+  const { data, linksGetter, searchContext } = props;
 
   return (
     <div className="KeyValueTable u-simple-scrollbars">
@@ -134,6 +162,13 @@ export default function AttributesTable(props: AttributesTableProps) {
           {data.map((row, i) => {
             const jsonTable = formatValue(row.key, row.value);
             const links = linksGetter ? linksGetter(data, i) : null;
+            const searchMoreLikeTheseUrl = searchContext
+              ? getSearchUrl({
+                  service: searchContext.serviceName,
+                  operation: searchContext.operationName,
+                  tags: JSON.stringify({ [row.key]: formatAttributeValueForSearch(row.value) }),
+                })
+              : null;
             let valueMarkup;
             if (links?.length === 1) {
               valueMarkup = (
@@ -180,6 +215,15 @@ export default function AttributesTable(props: AttributesTableProps) {
                 <td className="KeyValueTable--keyColumn">{keyMarkup}</td>
                 <td className="KeyValueTable--valueColumn">
                   <div className="KeyValueTable--copyContainer">
+                    {searchMoreLikeTheseUrl && (
+                      <a
+                        className="KeyValueTable--copyIcon KeyValueTable--searchLink"
+                        href={searchMoreLikeTheseUrl}
+                        title="Search More Like These"
+                      >
+                        <IoSearchOutline /> Search More Like These
+                      </a>
+                    )}
                     <CopyIcon
                       className="KeyValueTable--copyIcon"
                       copyText={String(row.value)}

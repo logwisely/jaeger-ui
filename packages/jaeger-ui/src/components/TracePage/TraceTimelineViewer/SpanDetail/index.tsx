@@ -149,6 +149,7 @@ export default function SpanDetail(props: SpanDetailProps) {
             data={span.attributes}
             label={attributesLabel}
             linksGetter={linksGetter}
+            span={span}
             isOpen={isAttributesOpen}
             onToggle={() => attributesToggle(span.spanID)}
           />
@@ -158,6 +159,7 @@ export default function SpanDetail(props: SpanDetailProps) {
               data={span.resource.attributes}
               label={resourceLabel}
               linksGetter={linksGetter}
+              span={span}
               isOpen={isResourceOpen}
               onToggle={() => resourceToggle(span.spanID)}
             />

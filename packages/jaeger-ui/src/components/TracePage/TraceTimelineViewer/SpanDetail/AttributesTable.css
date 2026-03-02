@@ -34,13 +34,39 @@ SPDX-License-Identifier: Apache-2.0
 }
 
 .KeyValueTable--copyContainer {
+  align-items: center;
+  display: inline-flex;
   float: right;
+  gap: 4px;
   margin-left: 8px;
   white-space: nowrap;
 }
 
 .KeyValueTable--row:not(:hover) .KeyValueTable--copyContainer .KeyValueTable--copyIcon {
   visibility: hidden;
+}
+
+.KeyValueTable--searchLink,
+.KeyValueTable--searchLink:hover,
+.KeyValueTable--searchLink:focus {
+  align-items: center;
+  background-color: transparent;
+  border: none;
+  border-radius: 4px;
+  color: inherit;
+  display: inline-flex;
+  font-size: 13px;
+  gap: 4px;
+  height: 100%;
+  margin-left: 0;
+  overflow: hidden;
+  padding: 1px 4px;
+  text-decoration: none;
+}
+
+.KeyValueTable--searchLink:hover,
+.KeyValueTable--searchLink:focus {
+  background: var(--surface-secondary);
 }
 
 .KeyValueTable--row > td {
