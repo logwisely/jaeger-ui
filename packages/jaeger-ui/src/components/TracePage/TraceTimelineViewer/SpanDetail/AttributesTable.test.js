@@ -6,6 +6,7 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 import AttributesTable, { LinkValue } from './AttributesTable';
+import { getUrl as getSearchUrl } from '../../../SearchTracePage/url';
 
 jest.mock('../../../common/CopyIcon', () => {
   return function CopyIcon({ copyText, tooltipTitle, buttonText, icon, className }) {
@@ -218,5 +219,42 @@ describe('<AttributesTable>', () => {
         expect(copyIcon).toHaveAttribute('data-tooltip-title', 'Copy JSON');
       }
     });
+  });
+
+  it('renders Search More Like These action with populated search URL for each row', () => {
+    render(
+      <AttributesTable
+        data={data}
+        searchContext={{ serviceName: 'frontend', operationName: 'GET /api/orders' }}
+      />
+    );
+
+    const actions = screen.getAllByRole('link', { name: 'Search More Like These' });
+    expect(actions).toHaveLength(data.length);
+
+    const expectedHref = getSearchUrl({
+      service: 'frontend',
+      operation: 'GET /api/orders',
+      tags: JSON.stringify({ [data[0].key]: data[0].value }),
+    });
+    expect(actions[0]).toHaveAttribute('href', expectedHref);
+  });
+
+  it('encodes dotted keys with numeric values as string tags for search', () => {
+    const dottedData = [{ key: 'request.id', value: 10 }];
+    render(
+      <AttributesTable
+        data={dottedData}
+        searchContext={{ serviceName: 'frontend', operationName: 'GET /checkout' }}
+      />
+    );
+
+    const action = screen.getByRole('link', { name: 'Search More Like These' });
+    const expectedHref = getSearchUrl({
+      service: 'frontend',
+      operation: 'GET /checkout',
+      tags: JSON.stringify({ 'request.id': '10' }),
+    });
+    expect(action).toHaveAttribute('href', expectedHref);
   });
 });

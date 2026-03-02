@@ -8,11 +8,12 @@ import AccordionAttributes, { AttributesSummary } from './AccordionAttributes';
 import * as markers from './AccordionAttributes.markers';
 
 jest.mock('./AttributesTable', () => {
-  const MockAttributesTable = ({ data, linksGetter }) => (
+  const MockAttributesTable = ({ data, linksGetter, searchContext }) => (
     <table
       data-testid="key-values-table"
       data-data={JSON.stringify(data)}
       data-has-links-getter={!!linksGetter}
+      data-search-context={searchContext ? JSON.stringify(searchContext) : ''}
     />
   );
   return MockAttributesTable;
@@ -56,6 +57,10 @@ describe('<AccordionAttributes />', () => {
     label: 'le-label',
     onToggle: jest.fn(),
     linksGetter: null,
+    span: {
+      resource: { serviceName: 'frontend', attributes: [] },
+      name: 'GET /api',
+    },
   };
 
   beforeEach(() => {
@@ -111,6 +116,10 @@ describe('<AccordionAttributes />', () => {
     const table = container.querySelector('[data-testid="key-values-table"]');
     expect(table).toBeInTheDocument();
     expect(table).toHaveAttribute('data-data', JSON.stringify(tags));
+    expect(table).toHaveAttribute(
+      'data-search-context',
+      JSON.stringify({ serviceName: 'frontend', operationName: 'GET /api' })
+    );
   });
 
   it('calls onToggle when data is empty and interactive is true', () => {

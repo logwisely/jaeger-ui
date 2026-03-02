@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import transformTraceData, { orderTags, deduplicateTags } from './transform-trace-data';
+import * as configUtils from '../utils/config/get-config';
 
 describe('orderTags()', () => {
   it('correctly orders tags', () => {
@@ -123,6 +124,10 @@ describe('transformTraceData()', () => {
       tags: [],
     },
   };
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
 
   it('should return null for trace without traceID', () => {
     const traceData = {
@@ -254,6 +259,45 @@ describe('transformTraceData()', () => {
       // Second call - should return same instance (memoization)
       const otelTrace2 = result.asOtelTrace();
       expect(otelTrace2).toBe(otelTrace1);
+    });
+
+    it('orders process/resource attributes using topTagPrefixes', () => {
+      jest.spyOn(configUtils, 'getConfigValue').mockImplementation(path => {
+        if (path === 'topTagPrefixes') {
+          return ['request.'];
+        }
+        return undefined;
+      });
+
+      const traceData = {
+        traceID,
+        spans: [
+          {
+            traceID,
+            spanID: rootSpanID,
+            operationName: rootOperationName,
+            startTime,
+            duration,
+            tags: [],
+            logs: [],
+            processID: 'p2',
+          },
+        ],
+        processes: {
+          p2: {
+            serviceName,
+            tags: [
+              { key: 'zeta', value: 'z' },
+              { key: 'request.id', value: '10' },
+              { key: 'alpha', value: 'a' },
+            ],
+          },
+        },
+      };
+
+      const transformed = transformTraceData(traceData);
+      const resourceKeys = transformed.asOtelTrace().spans[0].resource.attributes.map(attr => attr.key);
+      expect(resourceKeys).toEqual(['request.id', 'alpha', 'zeta']);
     });
   });
 
