@@ -30,20 +30,20 @@ export class JaegerClient {
 
   private buildFindTracesQueryParams(query: AttributeSuggestionQuery): URLSearchParams {
     const params = new URLSearchParams();
-    params.set('query.service_name', query.serviceName);
+    params.set('service_name', query.serviceName);
     if (query.spanName) {
-      params.set('query.operation_name', query.spanName);
+      params.set('operation_name', query.spanName);
     }
-    params.set('query.start_time_min', query.startTimeMin);
-    params.set('query.start_time_max', query.startTimeMax);
+    params.set('start_time_min', query.startTimeMin);
+    params.set('start_time_max', query.startTimeMax);
     if (query.durationMin) {
-      params.set('query.duration_min', query.durationMin);
+      params.set('duration_min', query.durationMin);
     }
     if (query.durationMax) {
-      params.set('query.duration_max', query.durationMax);
+      params.set('duration_max', query.durationMax);
     }
     if (query.attributes && Object.keys(query.attributes).length > 0) {
-      params.set('query.attributes', JSON.stringify(query.attributes));
+      params.set('attributes', JSON.stringify(query.attributes));
     }
     return params;
   }
@@ -105,8 +105,8 @@ export class JaegerClient {
     k = 10
   ): Promise<string[]> {
     const params = this.buildFindTracesQueryParams(query);
-    params.set('attribute_name', attributeName);
     params.set('k', String(k));
+    params.set('attribute_name', attributeName);
     const response = await this.fetchWithTimeout(
       `${this.apiRoot}/attributes/values/topk?${params.toString()}`
     );
