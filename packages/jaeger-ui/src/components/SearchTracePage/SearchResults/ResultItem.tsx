@@ -4,6 +4,7 @@
 import * as React from 'react';
 import { Col, Divider, Row, Tag } from 'antd';
 import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom-v5-compat';
 
 import _sortBy from 'lodash/sortBy';
 import dayjs from 'dayjs';
@@ -16,6 +17,7 @@ import * as markers from './ResultItem.markers';
 import ResultItemTitle from './ResultItemTitle';
 import colorGenerator from '../../../utils/color-generator';
 import { formatRelativeDate } from '../../../utils/date';
+import { getLocation } from '../../TracePage/url';
 
 import { IOtelTrace, StatusCode } from '../../../types/otel';
 
@@ -25,6 +27,7 @@ dayjs.extend(relativeTime);
 
 type Props = {
   durationPercent: number;
+  fromSearch?: string;
   isInDiffCohort: boolean;
   linkTo: React.ComponentProps<typeof Link>['to'];
   toggleComparison: (traceID: string) => void;
@@ -36,6 +39,7 @@ const trackTraceConversions = () => trackConversions(EAltViewActions.Traces);
 
 export default function ResultItem({
   durationPercent,
+  fromSearch,
   isInDiffCohort,
   linkTo,
   toggleComparison,
@@ -43,6 +47,7 @@ export default function ResultItem({
   disableComparision,
 }: Props) {
   const { duration, services = [], startTime, traceName, traceID, spans, orphanSpanCount } = trace;
+  const navigate = useNavigate();
 
   // Initialize state values
   const [erroredServices, setErroredServices] = React.useState<Set<string>>(new Set());
@@ -67,6 +72,57 @@ export default function ResultItem({
     setNumErredSpans(erredCount);
   }, [startTime, spans]);
 
+  const serviceSpanTargets = React.useMemo(() => {
+    const firstSpanByService = new Map<string, { spanID: string; startTime: number }>();
+    const firstErrorSpanByService = new Map<string, { spanID: string; startTime: number }>();
+    spans.forEach(span => {
+      const serviceName = span.resource.serviceName;
+      const spanStart = span.startTime;
+      const existing = firstSpanByService.get(serviceName);
+      if (!existing || spanStart < existing.startTime) {
+        firstSpanByService.set(serviceName, { spanID: span.spanID, startTime: spanStart });
+      }
+      if (span.status.code === StatusCode.ERROR) {
+        const existingError = firstErrorSpanByService.get(serviceName);
+        if (!existingError || spanStart < existingError.startTime) {
+          firstErrorSpanByService.set(serviceName, { spanID: span.spanID, startTime: spanStart });
+        }
+      }
+    });
+    return { firstSpanByService, firstErrorSpanByService };
+  }, [spans]);
+
+  const navigateToTrace = React.useCallback(
+    (to: React.ComponentProps<typeof Link>['to']) => {
+      navigate(to as any);
+    },
+    [navigate]
+  );
+
+  const handleSummaryKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        navigateToTrace(linkTo);
+      }
+    },
+    [linkTo, navigateToTrace]
+  );
+
+  const handleServiceClick = React.useCallback(
+    (serviceName: string, prefersError: boolean) => (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const { firstSpanByService, firstErrorSpanByService } = serviceSpanTargets;
+      const target =
+        (prefersError && firstErrorSpanByService.get(serviceName)) || firstSpanByService.get(serviceName);
+      if (!target) return;
+      const location = getLocation(traceID, fromSearch ? { fromSearch } : undefined, target.spanID);
+      navigateToTrace(location);
+    },
+    [fromSearch, navigateToTrace, serviceSpanTargets, traceID]
+  );
+
   return (
     <div className="ResultItem" onClick={trackTraceConversions} role="button">
       <ResultItemTitle
@@ -79,7 +135,13 @@ export default function ResultItem({
         traceName={traceName}
         disableComparision={disableComparision}
       />
-      <Link to={linkTo}>
+      <div
+        className="ResultItem--summary"
+        onClick={() => navigateToTrace(linkTo)}
+        onKeyDown={handleSummaryKeyDown}
+        role="link"
+        tabIndex={0}
+      >
         <Row>
           <Col span={4} className="ub-p2">
             <Tag className="ub-m1" data-testid={markers.NUM_SPANS} variant="outlined">
@@ -105,6 +167,7 @@ export default function ResultItem({
             <ul className="ub-list-reset" data-testid={markers.SERVICE_TAGS}>
               {_sortBy(services, s => s.name).map(service => {
                 const { name, numberOfSpans: count } = service;
+                const prefersError = erroredServices.has(name);
                 return (
                   <li key={name} className="ub-inline-block ub-m1">
                     <Tag
@@ -112,8 +175,19 @@ export default function ResultItem({
                       style={{ borderLeftColor: colorGenerator.getColorByKey(name) }}
                       variant="outlined"
                     >
-                      {erroredServices.has(name) && <IoAlert className="ResultItem--errorIcon" />}
-                      {name} ({count})
+                      <button
+                        type="button"
+                        className="ResultItem--serviceTagButton"
+                        onClick={handleServiceClick(name, prefersError)}
+                        aria-label={
+                          prefersError
+                            ? `Open trace at first error span for ${name}`
+                            : `Open trace at first span for ${name}`
+                        }
+                      >
+                        {prefersError && <IoAlert className="ResultItem--errorIcon" />}
+                        {name} ({count})
+                      </button>
                     </Tag>
                   </li>
                 );
@@ -128,7 +202,7 @@ export default function ResultItem({
             <small>{fromNow}</small>
           </Col>
         </Row>
-      </Link>
+      </div>
     </div>
   );
 }
