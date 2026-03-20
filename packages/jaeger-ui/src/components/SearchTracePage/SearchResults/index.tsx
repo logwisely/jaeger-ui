@@ -265,6 +265,7 @@ export function UnconnectedSearchResults({
               <ResultItem
                 durationPercent={getPercentageOfDuration(trace.duration, maxTraceDuration)}
                 isInDiffCohort={cohortIds.has(trace.traceID)}
+                fromSearch={searchUrl}
                 linkTo={getLocation(
                   trace.traceID,
                   { fromSearch: searchUrl },
