@@ -1,12 +1,13 @@
 // Copyright (c) 2017 Uber Technologies, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import React from 'react';
-import { Dropdown, Menu, MenuProps } from 'antd';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Button, Dropdown, Menu, MenuProps } from 'antd';
 import { IoChevronDown } from 'react-icons/io5';
 import _has from 'lodash/has';
 import { connect } from 'react-redux';
 import { Link } from 'react-router-dom';
+import { UpOutlined, DownOutlined } from '@ant-design/icons';
 
 import TraceIDSearchInput from './TraceIDSearchInput';
 import ThemeToggleButton from './ThemeToggleButton';
@@ -20,7 +21,11 @@ import * as monitorATMUrl from '../Monitor/url';
 import { ReduxState } from '../../types';
 import { ConfigMenuItem, ConfigMenuGroup } from '../../types/config';
 import { getConfigValue } from '../../utils/config/get-config';
-import prefixUrl from '../../utils/prefix-url';
+import {
+  SEARCH_PANEL_STATE_EVENT,
+  dispatchSearchPanelControl,
+  SearchPanelAction,
+} from '../../utils/search-panel-events';
 
 import './TopNav.css';
 import withRouteProps, { IWithRouteProps } from '../../utils/withRouteProps';
@@ -108,6 +113,24 @@ const itemsGlobalLeft: MenuProps['items'] = [
 export function TopNavImpl(props: Props) {
   const { config, pathname } = props;
   const menuItems = Array.isArray(config.menu) ? config.menu : [];
+  const [isSearchPanelCollapsed, setIsSearchPanelCollapsed] = useState(false);
+  const isSearchRoute = searchUrl.matches(pathname);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const handleState = (event: Event) => {
+      const detail = (event as CustomEvent<{ collapsed?: boolean }>).detail;
+      if (detail && typeof detail.collapsed === 'boolean') {
+        setIsSearchPanelCollapsed(detail.collapsed);
+      }
+    };
+    window.addEventListener(SEARCH_PANEL_STATE_EVENT, handleState as EventListener);
+    return () => window.removeEventListener(SEARCH_PANEL_STATE_EVENT, handleState as EventListener);
+  }, []);
+
+  const handleSearchPanelControl = useCallback((action: SearchPanelAction) => {
+    dispatchSearchPanelControl(action);
+  }, []);
 
   const itemsGlobalRight: MenuProps['items'] = [
     {
@@ -138,12 +161,44 @@ export function TopNavImpl(props: Props) {
           NAV_LINKS.map(({ matches, to, text }) => {
             const url = typeof to === 'string' ? to : to(props);
             const key = matches(pathname) ? pathname : url;
+            const isSearchLink = text === 'Search';
+            const searchLink = (
+              <Link
+                style={{ outline: 'revert' }}
+                to={url}
+                onClick={() => {
+                  if (isSearchLink) {
+                    handleSearchPanelControl('expand');
+                  }
+                }}
+              >
+                {text}
+              </Link>
+            );
+
             return {
               key,
-              label: (
-                <Link style={{ outline: 'revert' }} to={url}>
-                  {text}
-                </Link>
+              label: isSearchLink ? (
+                <div className="TopNav--linkWithToggle">
+                  {searchLink}
+                  {isSearchRoute && (
+                    <Button
+                      type="text"
+                      size="small"
+                      className="TopNav--searchPanelToggle"
+                      title={isSearchPanelCollapsed ? 'Show search panel' : 'Hide search panel'}
+                      aria-label={isSearchPanelCollapsed ? 'Show search panel' : 'Hide search panel'}
+                      icon={isSearchPanelCollapsed ? <DownOutlined /> : <UpOutlined />}
+                      onClick={e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleSearchPanelControl('toggle');
+                      }}
+                    />
+                  )}
+                </div>
+              ) : (
+                searchLink
               ),
             };
           })

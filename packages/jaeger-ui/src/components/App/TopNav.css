@@ -36,3 +36,20 @@ SPDX-License-Identifier: Apache-2.0
 .Menu--item.ant-menu-item-selected .ant-menu-title-content a {
   color: #fff;
 }
+
+.TopNav--linkWithToggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.TopNav--searchPanelToggle {
+  color: rgba(255, 255, 255, 0.75) !important;
+  padding: 0 6px !important;
+  height: 18px;
+}
+
+.TopNav--searchPanelToggle:hover {
+  color: #fff !important;
+}
