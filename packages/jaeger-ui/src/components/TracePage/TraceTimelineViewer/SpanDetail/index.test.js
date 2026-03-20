@@ -13,6 +13,7 @@ import { formatDuration } from '../utils';
 import traceGenerator from '../../../../demo/trace-generators';
 import transformTraceData from '../../../../model/transform-trace-data';
 import OtelSpanFacade from '../../../../model/OtelSpanFacade';
+import { formatDatetime } from '../../../../utils/date';
 
 jest.mock('./AccordionAttributes', () => {
   return function MockAccordionAttributes({ label, onToggle }) {
@@ -195,22 +196,21 @@ describe('<SpanDetail>', () => {
   it('displays the span operation name as the main heading', () => {
     render(<SpanDetail {...props} />);
     const heading = screen.getByRole('heading', { level: 2 });
-    expect(heading).toHaveTextContent(span.name);
+    expect(heading).toHaveTextContent('Service:');
+    expect(heading).toHaveTextContent('Operation:');
+    expect(heading).toHaveTextContent('Duration:');
   });
 
-  it('renders overview items with service name, duration and start time labels', () => {
+  it('renders overview item for start time', () => {
     render(<SpanDetail {...props} />);
 
     const labeledList = screen.getByTestId('labeled-list');
     expect(labeledList).toBeInTheDocument();
 
-    expect(screen.getByTestId('item-svc')).toBeInTheDocument();
-    expect(screen.getByTestId('item-duration')).toBeInTheDocument();
     expect(screen.getByTestId('item-start')).toBeInTheDocument();
 
-    expect(screen.getByTestId('item-svc')).toHaveTextContent('Service:');
-    expect(screen.getByTestId('item-duration')).toHaveTextContent('Duration:');
     expect(screen.getByTestId('item-start')).toHaveTextContent('Start Time:');
+    expect(screen.getByTestId('item-start')).toHaveTextContent(formatDatetime(span.startTime));
   });
 
   it('renders span tags accordian and triggers toggle callback with span ID', () => {
