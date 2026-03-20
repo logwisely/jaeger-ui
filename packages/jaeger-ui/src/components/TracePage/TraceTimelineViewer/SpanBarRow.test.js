@@ -170,14 +170,14 @@ describe('<SpanBarRow>', () => {
     expect(screen.getByText('no-instrumented-service')).toBeVisible();
   });
 
-  it('renders with error icon when hasOwnError is true', () => {
+  it('renders with failure icon when hasOwnError is true', () => {
     const props = {
       ...defaultProps,
       hasOwnError: true,
       hasChildError: false,
     };
     render(<SpanBarRow {...props} />);
-    expect(document.querySelector('.SpanBarRow--errorIcon')).toBeInTheDocument();
+    expect(document.querySelector('.SpanBarRow--failureIcon')).toBeInTheDocument();
   });
 
   it('applies is-detail-expanded class when isDetailExpanded is true', () => {

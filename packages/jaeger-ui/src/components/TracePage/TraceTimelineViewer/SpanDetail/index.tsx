@@ -4,7 +4,7 @@
 import React from 'react';
 import { Divider } from 'antd';
 
-import { IoLinkOutline } from 'react-icons/io5';
+import { IoLinkOutline, IoWarning, IoArrowRedoOutline, IoArrowUndoOutline } from 'react-icons/io5';
 import AccordionAttributes from './AccordionAttributes';
 import AccordionEvents from './AccordionEvents';
 import AccordionLinks from './AccordionLinks';
@@ -13,10 +13,11 @@ import DetailState from './DetailState';
 import { formatDuration } from '../utils';
 import CopyIcon from '../../../common/CopyIcon';
 import LabeledList from '../../../common/LabeledList';
+import { formatDatetime } from '../../../../utils/date';
 
 import { TNil } from '../../../../types';
 import { Hyperlink } from '../../../../types/hyperlink';
-import { IOtelSpan, IAttribute, IEvent } from '../../../../types/otel';
+import { IOtelSpan, IAttribute, IEvent, SpanKind } from '../../../../types/otel';
 
 import './index.css';
 
@@ -57,6 +58,36 @@ export default function SpanDetail(props: SpanDetailProps) {
 
   const { isAttributesOpen, isResourceOpen, events: eventsState, isWarningsOpen, isLinksOpen } = detailState;
   const warnings = span.warnings;
+  const hasErrorAttribute = span.attributes.some(attr => {
+    if (attr.key === 'error') {
+      const value = String(attr.value).toLowerCase();
+      return value === 'true' || value === '1';
+    }
+    if (attr.key === 'otel.status_code') {
+      return String(attr.value).toUpperCase() === 'ERROR';
+    }
+    return false;
+  });
+  const hasExceptionSignal =
+    span.attributes.some(attr => attr.key === 'exception.type') ||
+    span.events.some(
+      event =>
+        event.name.toLowerCase() === 'exception' ||
+        event.attributes.some(attr => attr.key === 'exception.type' || attr.key.startsWith('exception.'))
+    );
+  const isClientSpan = span.kind === SpanKind.CLIENT;
+  const isServerSpan = span.kind === SpanKind.SERVER;
+
+  const statusIcon = hasExceptionSignal ? (
+    <IoWarning className="SpanDetail--statusIcon SpanDetail--statusIcon--exception" />
+  ) : hasErrorAttribute ? (
+    <IoWarning className="SpanDetail--statusIcon SpanDetail--statusIcon--failure" />
+  ) : null;
+  const kindIcon = isClientSpan ? (
+    <IoArrowRedoOutline className="SpanDetail--kindIcon SpanDetail--kindIcon--client" />
+  ) : isServerSpan ? (
+    <IoArrowUndoOutline className="SpanDetail--kindIcon SpanDetail--kindIcon--server" />
+  ) : null;
 
   // Get links for display in AccordionLinks
   const links = span.links || [];
@@ -64,31 +95,38 @@ export default function SpanDetail(props: SpanDetailProps) {
   // Display labels based on terminology flag
   const attributesLabel = useOtelTerms ? 'Attributes' : 'Tags';
   const resourceLabel = useOtelTerms ? 'Resource' : 'Process';
-  const eventsLabel = useOtelTerms ? 'Events' : 'Logs';
-
   const overviewItems = [
-    {
-      key: 'svc',
-      label: 'Service:',
-      value: span.resource.serviceName,
-    },
-    {
-      key: 'duration',
-      label: 'Duration:',
-      value: formatDuration(span.duration),
-    },
     {
       key: 'start',
       label: 'Start Time:',
-      value: formatDuration(span.relativeStartTime),
+      value: `${formatDatetime(span.startTime)} (+${formatDuration(span.relativeStartTime)})`,
     },
   ];
   const deepLinkCopyText = `${window.location.origin}${window.location.pathname}?uiFind=${span.spanID}`;
+  const durationLabel = formatDuration(span.duration);
+  const isLongDuration = span.duration > 1_000_000;
 
   return (
     <div>
       <div className="ub-flex ub-items-center">
-        <h2 className="ub-flex-auto ub-m0">{span.name}</h2>
+        <h2 className="ub-flex-auto ub-m0 SpanDetail--title">
+          <>
+            <span className="SpanDetail--titlePart">
+              {statusIcon}
+              {kindIcon}
+              <span className="SpanDetail--titleLabel">Service:</span>
+              <span className="SpanDetail--titleValue">{span.resource.serviceName}</span>
+            </span>{' '}
+            <span className="SpanDetail--titlePart">
+              <span className="SpanDetail--titleLabel">Operation:</span>
+              <span className="SpanDetail--titleValue">{span.name}</span>
+            </span>{' '}
+            <span className={`SpanDetail--titlePart ${isLongDuration ? 'is-long-duration' : ''}`}>
+              <span className="SpanDetail--titleLabel">Duration:</span>
+              <span className="SpanDetail--titleValue SpanDetail--titleValue--duration">{durationLabel}</span>
+            </span>
+          </>
+        </h2>
         <LabeledList
           className="ub-tx-right-align"
           dividerClassName="SpanDetail--divider"

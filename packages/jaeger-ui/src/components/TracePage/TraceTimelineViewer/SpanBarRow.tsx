@@ -2,7 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useCallback } from 'react';
-import { IoAlert, IoGitNetwork, IoCloudUploadOutline, IoArrowForward } from 'react-icons/io5';
+import {
+  IoWarning,
+  IoFlame,
+  IoGitNetwork,
+  IoCloudUploadOutline,
+  IoArrowForward,
+  IoArrowRedoOutline,
+  IoArrowUndoOutline,
+} from 'react-icons/io5';
 import ReferencesButton from './ReferencesButton';
 import TimelineRow from './TimelineRow';
 import { formatDuration, ViewedBoundsFunctionType } from './utils';
@@ -12,7 +20,7 @@ import Ticks from './Ticks';
 
 import { TNil } from '../../../types';
 import { CriticalPathSection } from '../../../types/critical_path';
-import { IOtelSpan } from '../../../types/otel';
+import { IOtelSpan, SpanKind } from '../../../types/otel';
 
 import './SpanBarRow.css';
 
@@ -116,6 +124,43 @@ const SpanBarRow: React.FC<SpanBarRowProps> = ({
   // Show the references button if there's at least one link.
   const hasLinks = span.links && span.links.length > 0;
   const hasInboundLinks = span.inboundLinks && span.inboundLinks.length > 0;
+  const hasErrorAttribute = span.attributes.some(attr => {
+    if (attr.key === 'error') {
+      const value = String(attr.value).toLowerCase();
+      return value === 'true' || value === '1';
+    }
+    if (attr.key === 'otel.status_code') {
+      return String(attr.value).toUpperCase() === 'ERROR';
+    }
+    return false;
+  });
+  const hasExceptionAttribute = span.attributes.some(attr => attr.key === 'exception.type');
+  const hasExceptionEvent = span.events.some(
+    event =>
+      event.name.toLowerCase() === 'exception' ||
+      event.attributes.some(attr => attr.key === 'exception.type' || attr.key.startsWith('exception.'))
+  );
+  const hasExceptionSignal = hasExceptionAttribute || hasExceptionEvent;
+  const isClientSpan = span.kind === SpanKind.CLIENT;
+  const isServerSpan = span.kind === SpanKind.SERVER;
+  let leftStatusIcon: React.ReactNode | null = null;
+  if (hasExceptionSignal) {
+    leftStatusIcon = <IoFlame className="SpanBarRow--exceptionIcon" title="Exception detected" />;
+  } else if (hasOwnError || hasErrorAttribute) {
+    leftStatusIcon = <IoWarning className="SpanBarRow--failureIcon" title="Failure detected" />;
+  } else if (hasChildError) {
+    leftStatusIcon = <IoWarning className="SpanBarRow--failureIcon SpanBarRow--failureIcon--hollow" />;
+  }
+  let kindIcon: React.ReactNode | null = null;
+  if (isClientSpan) {
+    kindIcon = (
+      <IoArrowRedoOutline className="SpanBarRow--kindIcon SpanBarRow--kindIcon--client" title="Client span" />
+    );
+  } else if (isServerSpan) {
+    kindIcon = (
+      <IoArrowUndoOutline className="SpanBarRow--kindIcon SpanBarRow--kindIcon--server" title="Server span" />
+    );
+  }
 
   return (
     <TimelineRow
@@ -145,10 +190,8 @@ const SpanBarRow: React.FC<SpanBarRowProps> = ({
             <span
               className={`span-svc-name ${isParent && !isChildrenExpanded ? 'is-children-collapsed' : ''}`}
             >
-              {hasOwnError && <IoAlert className="SpanBarRow--errorIcon" />}
-              {!hasOwnError && hasChildError && (
-                <IoAlert className="SpanBarRow--errorIcon SpanBarRow--errorIcon--hollow" />
-              )}
+              {leftStatusIcon}
+              {kindIcon}
               {serviceName}{' '}
               {rpc && (
                 <span>
