@@ -166,19 +166,9 @@ describe('<TracePageHeader>', () => {
     });
   });
 
-  it('renders view mode toggle in summary panel for timeline view', () => {
-    const onFlatViewChange = jest.fn();
-    renderWithRouter(
-      <TracePageHeader
-        {...defaultProps}
-        viewType={ETraceViewType.TraceTimelineViewer}
-        onFlatViewChange={onFlatViewChange}
-      />
-    );
-    const viewModeItem = screen.getByTestId('header-item-view-mode');
-    expect(viewModeItem).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Flat View'));
-    expect(onFlatViewChange).toHaveBeenCalledWith(true);
+  it('does not render view mode toggle in summary panel for timeline view', () => {
+    renderWithRouter(<TracePageHeader {...defaultProps} viewType={ETraceViewType.TraceTimelineViewer} />);
+    expect(screen.queryByTestId('header-item-view-mode')).not.toBeInTheDocument();
   });
 
   it('renders a <SpanGraph>', () => {

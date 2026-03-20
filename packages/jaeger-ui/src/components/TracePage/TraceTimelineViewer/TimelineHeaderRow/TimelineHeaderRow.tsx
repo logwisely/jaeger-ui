@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from 'react';
+
 import VerticalResizer from '../../../common/VerticalResizer';
 import TimelineCollapser from './TimelineCollapser';
 import TimelineViewingLayer from './TimelineViewingLayer';
@@ -24,7 +25,6 @@ type TimelineHeaderRowProps = {
   updateNextViewRangeTime: (update: ViewRangeTimeUpdate) => void;
   updateViewRangeTime: TUpdateViewRangeTimeFunction;
   viewRangeTime: IViewRangeTime;
-  flatView: boolean;
   useOtelTerms: boolean;
 };
 
@@ -41,28 +41,24 @@ export default function TimelineHeaderRow(props: TimelineHeaderRowProps) {
     updateViewRangeTime,
     updateNextViewRangeTime,
     viewRangeTime,
-    flatView,
   } = props;
   const [viewStart, viewEnd] = viewRangeTime.current;
   const startTime = (viewStart * duration) as IOtelSpan['startTime'];
   const endTime = (viewEnd * duration) as IOtelSpan['endTime'];
-  const rightColumnWidth = flatView ? 1 : 1 - nameColumnWidth;
   return (
     <TimelineRow className="TimelineHeaderRow">
-      {!flatView && (
-        <TimelineRow.Cell className="ub-flex ub-px2" width={nameColumnWidth}>
-          <h3 className="TimelineHeaderRow--title">
-            Service &amp; {props.useOtelTerms ? 'Span Name' : 'Operation'}
-          </h3>
-          <TimelineCollapser
-            onCollapseAll={onCollapseAll}
-            onExpandAll={onExpandAll}
-            onCollapseOne={onCollapseOne}
-            onExpandOne={onExpandOne}
-          />
-        </TimelineRow.Cell>
-      )}
-      <TimelineRow.Cell width={rightColumnWidth}>
+      <TimelineRow.Cell className="ub-flex ub-px2" width={nameColumnWidth}>
+        <h3 className="TimelineHeaderRow--title">
+          Service &amp; {props.useOtelTerms ? 'Span Name' : 'Operation'}
+        </h3>
+        <TimelineCollapser
+          onCollapseAll={onCollapseAll}
+          onExpandAll={onExpandAll}
+          onCollapseOne={onCollapseOne}
+          onExpandOne={onExpandOne}
+        />
+      </TimelineRow.Cell>
+      <TimelineRow.Cell width={1 - nameColumnWidth}>
         <TimelineViewingLayer
           boundsInvalidator={nameColumnWidth}
           updateNextViewRangeTime={updateNextViewRangeTime}
@@ -71,9 +67,7 @@ export default function TimelineHeaderRow(props: TimelineHeaderRowProps) {
         />
         <Ticks numTicks={numTicks} startTime={startTime} endTime={endTime} showLabels />
       </TimelineRow.Cell>
-      {!flatView && (
-        <VerticalResizer position={nameColumnWidth} onChange={onColummWidthChange} min={0.15} max={0.85} />
-      )}
+      <VerticalResizer position={nameColumnWidth} onChange={onColummWidthChange} min={0.15} max={0.85} />
     </TimelineRow>
   );
 }

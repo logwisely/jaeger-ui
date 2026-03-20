@@ -36,7 +36,6 @@ type TProps = TDispatchProps & {
   updateViewRangeTime: TUpdateViewRangeTimeFunction;
   viewRange: IViewRange;
   useOtelTerms: boolean;
-  flatView: boolean;
 };
 
 const NUM_TICKS = 5;
@@ -61,7 +60,6 @@ export const TraceTimelineViewerImpl = (props: TProps) => {
     trace,
     spanNameColumnWidth,
     useOtelTerms,
-    flatView,
     ...rest
   } = props;
 
@@ -82,12 +80,6 @@ export const TraceTimelineViewerImpl = (props: TProps) => {
   }, [expandOneAction, trace.spans]);
 
   useEffect(() => {
-    if (flatView) {
-      expandAllAction();
-    }
-  }, [expandAllAction, flatView]);
-
-  useEffect(() => {
     mergeShortcuts({
       collapseAll,
       expandAll,
@@ -100,7 +92,7 @@ export const TraceTimelineViewerImpl = (props: TProps) => {
     <div className="TraceTimelineViewer">
       <TimelineHeaderRow
         duration={trace.duration}
-        nameColumnWidth={flatView ? 0 : spanNameColumnWidth}
+        nameColumnWidth={spanNameColumnWidth}
         numTicks={NUM_TICKS}
         onCollapseAll={collapseAll}
         onCollapseOne={collapseOne}
@@ -110,12 +102,10 @@ export const TraceTimelineViewerImpl = (props: TProps) => {
         viewRangeTime={viewRange.time}
         updateNextViewRangeTime={updateNextViewRangeTime}
         updateViewRangeTime={updateViewRangeTime}
-        flatView={flatView}
         useOtelTerms={useOtelTerms}
       />
       <VirtualizedTraceView
         {...rest}
-        flatView={flatView}
         trace={trace}
         useOtelTerms={useOtelTerms}
         currentViewRangeTime={viewRange.time.current}

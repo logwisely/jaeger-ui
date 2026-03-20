@@ -47,7 +47,6 @@ type RowState = {
 };
 
 type TVirtualizedTraceViewOwnProps = {
-  flatView: boolean;
   currentViewRangeTime: [number, number];
   findMatchesIDs: Set<string> | TNil;
   scrollToFirstVisibleSpan: () => void;
@@ -95,8 +94,7 @@ const NUM_TICKS = 5;
 function generateRowStates(
   spans: ReadonlyArray<IOtelSpan> | TNil,
   childrenHiddenIDs: Set<string>,
-  detailStates: Map<string, DetailState | TNil>,
-  flatView: boolean
+  detailStates: Map<string, DetailState | TNil>
 ): RowState[] {
   if (!spans) {
     return [];
@@ -117,7 +115,7 @@ function generateRowStates(
     if (hidden) {
       continue;
     }
-    if (!flatView && childrenHiddenIDs.has(spanID)) {
+    if (childrenHiddenIDs.has(spanID)) {
       collapseDepth = depth + 1;
     }
     rowStates.push({
@@ -125,7 +123,7 @@ function generateRowStates(
       isDetail: false,
       spanIndex: i,
     });
-    if (flatView || detailStates.has(spanID)) {
+    if (detailStates.has(spanID)) {
       rowStates.push({
         span,
         isDetail: true,
@@ -139,13 +137,12 @@ function generateRowStates(
 function generateRowStatesFromTrace(
   trace: IOtelTrace | TNil,
   childrenHiddenIDs: Set<string>,
-  detailStates: Map<string, DetailState | TNil>,
-  flatView: boolean
+  detailStates: Map<string, DetailState | TNil>
 ): RowState[] {
   if (!trace) {
     return [];
   }
-  return generateRowStates(trace.spans, childrenHiddenIDs, detailStates, flatView);
+  return generateRowStates(trace.spans, childrenHiddenIDs, detailStates);
 }
 
 function getCssClasses(currentViewRange: [number, number]) {
@@ -287,9 +284,8 @@ export class VirtualizedTraceViewImpl extends React.Component<VirtualizedTraceVi
   };
 
   getRowStates(): RowState[] {
-    const { childrenHiddenIDs, detailStates, trace, flatView } = this.props;
-    const effectiveChildrenHiddenIDs = flatView ? new Set<string>() : childrenHiddenIDs;
-    return memoizedGenerateRowStates(trace, effectiveChildrenHiddenIDs, detailStates, flatView);
+    const { childrenHiddenIDs, detailStates, trace } = this.props;
+    return memoizedGenerateRowStates(trace, childrenHiddenIDs, detailStates);
   }
 
   getClippingCssClasses(): string {
@@ -456,7 +452,6 @@ export class VirtualizedTraceViewImpl extends React.Component<VirtualizedTraceVi
       trace,
       criticalPath,
       useOtelTerms,
-      flatView,
     } = this.props;
     // to avert flow error
     if (!trace) {
@@ -466,8 +461,8 @@ export class VirtualizedTraceViewImpl extends React.Component<VirtualizedTraceVi
     const { spans } = trace;
 
     const color = colorGenerator.getColorByKey(serviceName);
-    const isCollapsed = flatView ? false : childrenHiddenIDs.has(spanID);
-    const isDetailExpanded = flatView ? true : detailStates.has(spanID);
+    const isCollapsed = childrenHiddenIDs.has(spanID);
+    const isDetailExpanded = detailStates.has(spanID);
     const isMatchingFilter = findMatchesIDs ? findMatchesIDs.has(spanID) : false;
     const hasOwnError = isErrorSpan(span);
     const hasChildError = isCollapsed && spanContainsErredSpan(spans, spanIndex);
@@ -505,7 +500,6 @@ export class VirtualizedTraceViewImpl extends React.Component<VirtualizedTraceVi
           color={color}
           criticalPath={criticalPathSections}
           columnDivision={spanNameColumnWidth}
-          hideLeftColumn={flatView}
           isChildrenExpanded={!isCollapsed}
           isDetailExpanded={isDetailExpanded}
           isMatchingFilter={isMatchingFilter}
@@ -542,15 +536,12 @@ export class VirtualizedTraceViewImpl extends React.Component<VirtualizedTraceVi
       spanNameColumnWidth,
       trace,
       currentViewRangeTime,
-      criticalPath,
       useOtelTerms,
-      flatView,
     } = this.props;
     const detailState = detailStates.get(spanID);
-    if (!trace || (!detailState && !flatView)) {
+    if (!trace || !detailState) {
       return null;
     }
-    const effectiveDetailState = detailState || new DetailState();
 
     const color = colorGenerator.getColorByKey(serviceName);
     return (
@@ -558,11 +549,8 @@ export class VirtualizedTraceViewImpl extends React.Component<VirtualizedTraceVi
         <SpanDetailRow
           color={color}
           columnDivision={spanNameColumnWidth}
-          hideLeftColumn={flatView}
-          flatView={flatView}
-          isCriticalPathSpan={criticalPath.some(section => section.spanID === spanID)}
           onDetailToggled={detailToggle}
-          detailState={effectiveDetailState}
+          detailState={detailState}
           linksGetter={this.linksGetterFromAttributes(span)}
           eventItemToggle={this.eventItemToggleAdapter(detailLogItemToggle)}
           eventsToggle={detailLogsToggle}

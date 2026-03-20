@@ -5,7 +5,7 @@
 import * as React from 'react';
 import cx from 'classnames';
 import _sortBy from 'lodash/sortBy';
-import { IoAlertCircleOutline, IoChevronDown, IoChevronForward } from 'react-icons/io5';
+import { IoChevronDown, IoChevronForward } from 'react-icons/io5';
 
 import AccordionAttributes from './AccordionAttributes';
 import { formatDuration } from '../../../../utils/date';
@@ -18,7 +18,6 @@ import './AccordionEvents.css';
 type AccordionEventsProps = {
   interactive?: boolean;
   isOpen: boolean;
-  showAllByDefault?: boolean;
   linksGetter?: ((pairs: ReadonlyArray<IAttribute>, index: number) => Hyperlink[]) | TNil;
   events: ReadonlyArray<IEvent>;
   onItemToggle?: (event: IEvent) => void;
@@ -35,7 +34,6 @@ type AccordionEventsProps = {
 export default function AccordionEvents({
   interactive = true,
   isOpen,
-  showAllByDefault = false,
   linksGetter,
   events,
   openedItems,
@@ -48,17 +46,10 @@ export default function AccordionEvents({
   spanID,
   useOtelTerms,
 }: AccordionEventsProps) {
-  const isExceptionEvent = React.useCallback((event: IEvent) => {
-    if (event.name.toLowerCase() === 'exception') {
-      return true;
-    }
-    return event.attributes.some(attr => attr.key === 'exception.type' || attr.key.startsWith('exception.'));
-  }, []);
-
   let arrow: React.ReactNode | null = null;
   let HeaderComponent: 'span' | 'a' = 'span';
   let headerProps: object | null = null;
-  const [showOutOfRangeEvents, setShowOutOfRangeEvents] = React.useState(showAllByDefault);
+  const [showOutOfRangeEvents, setShowOutOfRangeEvents] = React.useState(false);
   const [showAllEvents, setShowAllEvents] = React.useState(false);
   const contentRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -135,7 +126,7 @@ export default function AccordionEvents({
   let title = `${label} (${displayedCount})`;
   let toggleLink: React.ReactNode = null;
 
-  if (!showAllByDefault && !showOutOfRangeEvents && inRangeCount < totalCount) {
+  if (!showOutOfRangeEvents && inRangeCount < totalCount) {
     title = `${label} (${inRangeCount} of ${totalCount})`;
     toggleLink = (
       <button
@@ -149,7 +140,7 @@ export default function AccordionEvents({
         show all
       </button>
     );
-  } else if (!showAllByDefault && showOutOfRangeEvents && inRangeCount < totalCount) {
+  } else if (showOutOfRangeEvents && inRangeCount < totalCount) {
     title = `${label} (${totalCount})`;
     toggleLink = (
       <button
@@ -164,12 +155,6 @@ export default function AccordionEvents({
       </button>
     );
   }
-
-  React.useEffect(() => {
-    if (showAllByDefault && !showOutOfRangeEvents) {
-      setShowOutOfRangeEvents(true);
-    }
-  }, [showAllByDefault, showOutOfRangeEvents]);
 
   if (interactive) {
     arrow = isOpen ? (
@@ -200,25 +185,13 @@ export default function AccordionEvents({
                 : sortedEvents;
             return visibleLogs.map((event, i) => {
               const durationLabel = formatDuration((event.timestamp - timestamp) as IEvent['timestamp']);
-              const exceptionEvent = isExceptionEvent(event);
-              const labelText = useOtelTerms ? `${event.name} (${durationLabel})` : durationLabel;
-              const labelContent = exceptionEvent ? (
-                <span className="AccordionEvents--exceptionLabel">
-                  <IoAlertCircleOutline className="AccordionEvents--exceptionIcon" title="Exception event" />{' '}
-                  {labelText}
-                </span>
-              ) : (
-                labelText
-              );
+              const labelContent = useOtelTerms ? `${event.name} (${durationLabel})` : durationLabel;
               return (
                 <AccordionAttributes
                   // `i` is necessary in the key because timestamps can repeat
 
                   key={`${event.timestamp}-${i}`}
-                  className={cx({
-                    'ub-mb1': i < visibleLogs.length - 1,
-                    'AccordionEvents--exceptionItem': exceptionEvent,
-                  })}
+                  className={i < visibleLogs.length - 1 ? 'ub-mb1' : null}
                   data={event.attributes}
                   highContrast
                   interactive={interactive}

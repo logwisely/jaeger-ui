@@ -54,8 +54,6 @@ type TracePageHeaderEmbedProps = {
   updateViewRangeTime: TUpdateViewRangeTimeFunction;
   viewRange: IViewRange;
   useOtelTerms: boolean;
-  flatView?: boolean;
-  onFlatViewChange?: (isFlatView: boolean) => void;
 };
 
 export const HEADER_ITEMS = [
@@ -145,8 +143,6 @@ export function TracePageHeaderFn(props: TracePageHeaderEmbedProps & { forwarded
     updateViewRangeTime,
     viewRange,
     useOtelTerms,
-    flatView = false,
-    onFlatViewChange,
   } = props;
 
   if (!trace) {
@@ -162,29 +158,6 @@ export function TracePageHeaderFn(props: TracePageHeaderEmbedProps & { forwarded
       const { renderer, ...rest } = item;
       return { ...rest, value: renderer(trace) };
     });
-  if (summaryItems && viewType === ETraceViewType.TraceTimelineViewer && onFlatViewChange) {
-    summaryItems = [
-      ...summaryItems,
-      {
-        key: 'view-mode',
-        label: 'View',
-        value: (
-          <span className="TracePageHeader--viewModeValue">
-            <Radio.Group
-              className="TracePageHeader--viewModeToggle"
-              size="small"
-              value={flatView ? 'flat' : 'tree'}
-              onChange={evt => onFlatViewChange(evt.target.value === 'flat')}
-            >
-              <Radio.Button value="tree">Tree View</Radio.Button>
-              <Radio.Button value="flat">Flat View</Radio.Button>
-            </Radio.Group>
-          </span>
-        ),
-      },
-    ];
-  }
-
   const traceShortID = trace.traceID.slice(0, 7);
 
   const title = (
