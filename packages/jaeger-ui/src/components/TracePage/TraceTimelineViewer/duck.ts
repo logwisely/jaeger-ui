@@ -89,7 +89,11 @@ const fullActions = createActions<TActionTypes>({
   }),
   [actionTypes.REMOVE_HOVER_INDENT_GUIDE_ID]: (spanID: string) => ({ spanID }),
   [actionTypes.SET_SPAN_NAME_COLUMN_WIDTH]: (width: number) => ({ width }),
-  [actionTypes.SET_TRACE]: (trace: IOtelTrace, uiFind: string | TNil) => ({ trace, uiFind }),
+  [actionTypes.SET_TRACE]: (trace: IOtelTrace, uiFind: string | TNil, allowHide?: boolean) => ({
+    trace,
+    uiFind,
+    allowHide,
+  }),
 });
 
 export const actions = (fullActions as any).jaegerUi.traceTimelineViewer as TTimelineViewerActions;
@@ -137,7 +141,7 @@ function clearShouldScrollToFirstUiFindMatch(state: TTraceTimeline) {
   return state;
 }
 
-function setTrace(state: TTraceTimeline, { uiFind, trace }: TTraceUiFindValue) {
+function setTrace(state: TTraceTimeline, { uiFind, trace, allowHide }: TTraceUiFindValue) {
   const { traceID, spans } = trace;
   if (traceID === state.traceID) {
     return state;
@@ -146,7 +150,7 @@ function setTrace(state: TTraceTimeline, { uiFind, trace }: TTraceUiFindValue) {
 
   return Object.assign(
     { ...newInitialState(), spanNameColumnWidth, traceID },
-    uiFind ? calculateFocusedFindRowStates(uiFind, spans) : null
+    uiFind ? calculateFocusedFindRowStates(uiFind, spans, allowHide ?? false) : null
   );
 }
 

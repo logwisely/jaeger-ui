@@ -117,7 +117,11 @@ export default function ResultItem({
       const target =
         (prefersError && firstErrorSpanByService.get(serviceName)) || firstSpanByService.get(serviceName);
       if (!target) return;
-      const location = getLocation(traceID, fromSearch ? { fromSearch } : undefined, target.spanID);
+      const location = getLocation(
+        traceID,
+        fromSearch ? { fromSearch, uiFindNoHide: 'true' } : { uiFindNoHide: 'true' },
+        target.spanID
+      );
       navigateToTrace(location);
     },
     [fromSearch, navigateToTrace, serviceSpanTargets, traceID]
