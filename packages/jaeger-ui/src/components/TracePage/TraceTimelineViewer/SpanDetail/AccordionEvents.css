@@ -37,3 +37,54 @@ SPDX-License-Identifier: Apache-2.0
 .AccordionEvents--footer {
   color: var(--text-secondary);
 }
+
+.AccordionEvents--event .AccordionAttributes--header {
+  box-shadow: inset 3px 0 0 transparent;
+  border-radius: 2px;
+}
+
+.AccordionEvents--event--exception .AccordionAttributes--header {
+  background: color-mix(in srgb, var(--feedback-error) 12%, var(--surface-primary));
+  box-shadow: inset 3px 0 0 var(--feedback-error);
+}
+
+.AccordionEvents--event--error .AccordionAttributes--header {
+  background: color-mix(in srgb, var(--feedback-warning) 12%, var(--surface-primary));
+  box-shadow: inset 3px 0 0 var(--feedback-warning);
+}
+
+.AccordionEvents--eventLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.AccordionEvents--eventBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.72em;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.AccordionEvents--eventBadgeIcon {
+  font-size: 0.95em;
+}
+
+.AccordionEvents--eventBadge--exception {
+  color: var(--feedback-error);
+  border-color: color-mix(in srgb, var(--feedback-error) 45%, transparent);
+  background: color-mix(in srgb, var(--feedback-error) 12%, transparent);
+}
+
+.AccordionEvents--eventBadge--error {
+  color: var(--feedback-warning);
+  border-color: color-mix(in srgb, var(--feedback-warning) 45%, transparent);
+  background: color-mix(in srgb, var(--feedback-warning) 12%, transparent);
+}

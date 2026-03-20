@@ -5,7 +5,7 @@
 import * as React from 'react';
 import cx from 'classnames';
 import _sortBy from 'lodash/sortBy';
-import { IoChevronDown, IoChevronForward } from 'react-icons/io5';
+import { IoAlert, IoChevronDown, IoChevronForward, IoWarning } from 'react-icons/io5';
 
 import AccordionAttributes from './AccordionAttributes';
 import { formatDuration } from '../../../../utils/date';
@@ -52,6 +52,37 @@ export default function AccordionEvents({
   const [showOutOfRangeEvents, setShowOutOfRangeEvents] = React.useState(false);
   const [showAllEvents, setShowAllEvents] = React.useState(false);
   const contentRef = React.useRef<HTMLDivElement | null>(null);
+  const errorLevelKeys = React.useMemo(
+    () => new Set(['log.level', 'level', 'severity', 'severity.text', 'severitytext', 'severity_text']),
+    []
+  );
+  const messageKeys = React.useMemo(
+    () => new Set(['message', 'msg', 'log.message', 'error.message', 'exception.message']),
+    []
+  );
+  const errorMessageRegex = React.useMemo(() => /\b(error|failure|failed)\b/i, []);
+
+  const getNormalizedKey = React.useCallback((key: string) => key.toLowerCase(), []);
+
+  const hasErrorLevel = React.useCallback(
+    (attributes: ReadonlyArray<IAttribute>) => {
+      const attr = attributes.find(candidate => errorLevelKeys.has(getNormalizedKey(candidate.key)));
+      if (!attr || typeof attr.value !== 'string') return false;
+      const value = attr.value.toLowerCase();
+      return value === 'error' || value === 'err' || value === 'fatal' || value === 'critical';
+    },
+    [errorLevelKeys, getNormalizedKey]
+  );
+
+  const hasErrorMessage = React.useCallback(
+    (attributes: ReadonlyArray<IAttribute>) => {
+      return attributes.some(attr => {
+        if (!messageKeys.has(getNormalizedKey(attr.key))) return false;
+        return typeof attr.value === 'string' && errorMessageRegex.test(attr.value);
+      });
+    },
+    [errorMessageRegex, getNormalizedKey, messageKeys]
+  );
 
   const notifyListReflow = React.useCallback(() => {
     const emit = () => {
@@ -185,18 +216,41 @@ export default function AccordionEvents({
                 : sortedEvents;
             return visibleLogs.map((event, i) => {
               const durationLabel = formatDuration((event.timestamp - timestamp) as IEvent['timestamp']);
+              const isException = event.name.toLowerCase() === 'exception';
+              const isErrorLog =
+                !isException && (hasErrorLevel(event.attributes) || hasErrorMessage(event.attributes));
               const labelContent = useOtelTerms ? `${event.name} (${durationLabel})` : durationLabel;
+              const annotation = isException ? (
+                <span className="AccordionEvents--eventBadge AccordionEvents--eventBadge--exception">
+                  <IoAlert className="AccordionEvents--eventBadgeIcon" />
+                  Exception
+                </span>
+              ) : isErrorLog ? (
+                <span className="AccordionEvents--eventBadge AccordionEvents--eventBadge--error">
+                  <IoWarning className="AccordionEvents--eventBadgeIcon" />
+                  Error
+                </span>
+              ) : null;
               return (
                 <AccordionAttributes
                   // `i` is necessary in the key because timestamps can repeat
 
                   key={`${event.timestamp}-${i}`}
-                  className={i < visibleLogs.length - 1 ? 'ub-mb1' : null}
+                  className={cx(
+                    i < visibleLogs.length - 1 ? 'ub-mb1' : null,
+                    isException ? 'AccordionEvents--event AccordionEvents--event--exception' : null,
+                    isErrorLog ? 'AccordionEvents--event AccordionEvents--event--error' : null
+                  )}
                   data={event.attributes}
                   highContrast
                   interactive={interactive}
                   isOpen={openedItems ? openedItems.has(event) : false}
-                  label={labelContent}
+                  label={
+                    <span className="AccordionEvents--eventLabel">
+                      {annotation}
+                      <span className="AccordionEvents--eventText">{labelContent}</span>
+                    </span>
+                  }
                   linksGetter={linksGetter}
                   onToggle={interactive && onItemToggle ? () => onItemToggle(event) : null}
                 />
