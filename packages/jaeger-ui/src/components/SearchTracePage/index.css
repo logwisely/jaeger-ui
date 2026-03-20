@@ -17,6 +17,20 @@ SPDX-License-Identifier: Apache-2.0
   overflow: hidden;
 }
 
+.SearchTracePage--leftPane {
+  transition:
+    flex-basis 0.2s ease,
+    max-width 0.2s ease,
+    min-width 0.2s ease,
+    padding 0.2s ease;
+}
+
+.SearchTracePage--leftPane.is-collapsed {
+  padding: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .SearchTracePage--column:first-child {
   padding-left: 1rem;
 }
@@ -34,6 +48,21 @@ SPDX-License-Identifier: Apache-2.0
   flex-direction: column;
   flex: 1;
   overflow: hidden;
+  max-height: 100%;
+  transform-origin: top;
+  transition:
+    max-height 0.2s ease,
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.SearchTracePage--find.is-collapsed {
+  max-height: 0;
+  opacity: 0;
+  transform: scaleY(0);
+  pointer-events: none;
+  padding: 0;
+  border-width: 0;
 }
 
 .SearchTracePage--find .ant-tabs {
@@ -69,30 +98,6 @@ SPDX-License-Identifier: Apache-2.0
 
 .SearchTracePage--resizeHandle:active {
   background-color: #096dd9;
-}
-
-.SearchTracePage--expandButton {
-  width: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  background-color: var(--surface-secondary);
-  border-right: 1px solid var(--border-default);
-  padding: 0 0.5rem;
-}
-
-.SearchTracePage--expandButton button {
-  font-size: 16px;
-}
-
-.SearchTracePage--collapseButton {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 10;
-  padding: 4px !important;
-  min-width: 32px !important;
 }
 
 .SearchTracePage--find {

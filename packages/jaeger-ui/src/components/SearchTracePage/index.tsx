@@ -3,8 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Tabs, Button } from 'antd';
-import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
+import { Tabs } from 'antd';
 import { connect } from 'react-redux';
 import { bindActionCreators, Dispatch } from 'redux';
 import store from 'store';
@@ -24,6 +23,11 @@ import { actions as traceDiffActions } from '../TraceDiff/duck';
 import { fetchedState } from '../../constants';
 import { sortTraces } from '../../model/search';
 import FileLoader from './FileLoader';
+import {
+  SEARCH_PANEL_CONTROL_EVENT,
+  dispatchSearchPanelState,
+  SearchPanelAction,
+} from '../../utils/search-panel-events';
 
 import './index.css';
 import JaegerLogo from '../../img/jaeger-logo.svg';
@@ -106,9 +110,30 @@ export function SearchTracePageImpl(props: SearchTracePageImplProps) {
     setIsResizing(true);
   }, []);
 
-  const toggleLeftPane = useCallback(() => {
-    setIsLeftPaneCollapsed(prev => !prev);
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const handleControl = (event: Event) => {
+      const detail = (event as CustomEvent<{ action?: SearchPanelAction }>).detail;
+      if (!detail || !detail.action) return;
+      if (detail.action === 'toggle') {
+        setIsLeftPaneCollapsed(prev => !prev);
+        return;
+      }
+      if (detail.action === 'expand') {
+        setIsLeftPaneCollapsed(false);
+        return;
+      }
+      if (detail.action === 'collapse') {
+        setIsLeftPaneCollapsed(true);
+      }
+    };
+    window.addEventListener(SEARCH_PANEL_CONTROL_EVENT, handleControl as EventListener);
+    return () => window.removeEventListener(SEARCH_PANEL_CONTROL_EVENT, handleControl as EventListener);
   }, []);
+
+  useEffect(() => {
+    dispatchSearchPanelState(isLeftPaneCollapsed);
+  }, [isLeftPaneCollapsed]);
 
   useEffect(() => {
     if (!isResizing) return;
@@ -193,42 +218,28 @@ export function SearchTracePageImpl(props: SearchTracePageImplProps) {
 
   return (
     <div className="SearchTracePage--row" ref={containerRef}>
-      {!embedded && !isLeftPaneCollapsed && (
+      {!embedded && (
         <>
           <div
-            className="SearchTracePage--column"
+            className={`SearchTracePage--column SearchTracePage--leftPane${
+              isLeftPaneCollapsed ? ' is-collapsed' : ''
+            }`}
             style={{
               flexGrow: 0,
               flexShrink: 0,
-              flexBasis: `${leftPaneWidth}%`,
-              minWidth: '15%',
-              maxWidth: '50%',
+              flexBasis: isLeftPaneCollapsed ? '0%' : `${leftPaneWidth}%`,
+              minWidth: isLeftPaneCollapsed ? '0' : '15%',
+              maxWidth: isLeftPaneCollapsed ? '0' : '50%',
             }}
           >
-            <div className="SearchTracePage--find">
-              <Button
-                type="text"
-                size="small"
-                icon={<MenuFoldOutlined />}
-                onClick={toggleLeftPane}
-                className="SearchTracePage--collapseButton"
-                title="Hide search panel"
-              />
+            <div className={`SearchTracePage--find${isLeftPaneCollapsed ? ' is-collapsed' : ''}`}>
               <Tabs size="large" items={tabItems} />
             </div>
           </div>
-          <div className="SearchTracePage--resizeHandle" onMouseDown={handleMouseDown} />
+          {!isLeftPaneCollapsed && (
+            <div className="SearchTracePage--resizeHandle" onMouseDown={handleMouseDown} />
+          )}
         </>
-      )}
-      {!embedded && isLeftPaneCollapsed && (
-        <div className="SearchTracePage--expandButton">
-          <Button
-            type="text"
-            icon={<MenuUnfoldOutlined />}
-            onClick={toggleLeftPane}
-            title="Show search panel"
-          />
-        </div>
       )}
       <div className="SearchTracePage--column" style={{ flex: 1, minWidth: 0 }}>
         {showErrors && (
