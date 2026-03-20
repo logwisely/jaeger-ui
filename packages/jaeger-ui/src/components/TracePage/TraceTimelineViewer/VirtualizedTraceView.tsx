@@ -67,7 +67,7 @@ type TDispatchProps = {
   detailTagsToggle: (spanID: string) => void;
   detailToggle: (spanID: string) => void;
   setSpanNameColumnWidth: (width: number) => void;
-  setTrace: (trace: IOtelTrace | TNil, uiFind: string | TNil) => void;
+  setTrace: (trace: IOtelTrace | TNil, uiFind: string | TNil, allowHide?: boolean) => void;
   focusUiFindMatches: (trace: IOtelTrace, uiFind: string | TNil, allowHide?: boolean) => void;
 };
 
@@ -211,7 +211,7 @@ export class VirtualizedTraceViewImpl extends React.Component<VirtualizedTraceVi
   constructor(props: VirtualizedTraceViewProps) {
     super(props);
     const { setTrace, trace, uiFind } = props;
-    setTrace(trace, uiFind);
+    setTrace(trace, uiFind, false);
   }
 
   componentDidMount(): void {
@@ -248,7 +248,7 @@ export class VirtualizedTraceViewImpl extends React.Component<VirtualizedTraceVi
     } = this.props;
 
     if (trace !== nextTrace) {
-      setTrace(nextTrace, uiFind);
+      setTrace(nextTrace, uiFind, false);
     }
 
     if (this.listView && registerAccessors !== nextRegisterAccessors) {
