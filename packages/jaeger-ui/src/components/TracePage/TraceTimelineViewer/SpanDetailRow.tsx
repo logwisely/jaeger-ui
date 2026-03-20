@@ -58,7 +58,7 @@ const SpanDetailRow = React.memo((props: SpanDetailRowProps) => {
   } = props;
   return (
     <TimelineRow className="detail-row">
-      <TimelineRow.Cell width={columnDivision}>
+      <TimelineRow.Cell className="detail-name-column" width={columnDivision}>
         <SpanTreeOffset span={span} showChildrenIcon={false} color={color} />
         <span>
           <span

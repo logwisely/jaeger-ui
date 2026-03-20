@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from 'react';
+import { Tooltip } from 'antd';
+import { PlusCircleOutlined, MinusCircleOutlined } from '@ant-design/icons';
 
 import VerticalResizer from '../../../common/VerticalResizer';
 import TimelineCollapser from './TimelineCollapser';
@@ -22,6 +24,8 @@ type TimelineHeaderRowProps = {
   onColummWidthChange: (width: number) => void;
   onExpandAll: () => void;
   onExpandOne: () => void;
+  onToggleNameColumn: () => void;
+  isNameColumnCollapsed: boolean;
   updateNextViewRangeTime: (update: ViewRangeTimeUpdate) => void;
   updateViewRangeTime: TUpdateViewRangeTimeFunction;
   viewRangeTime: IViewRangeTime;
@@ -38,6 +42,8 @@ export default function TimelineHeaderRow(props: TimelineHeaderRowProps) {
     onColummWidthChange,
     onExpandAll,
     onExpandOne,
+    onToggleNameColumn,
+    isNameColumnCollapsed,
     updateViewRangeTime,
     updateNextViewRangeTime,
     viewRangeTime,
@@ -47,18 +53,32 @@ export default function TimelineHeaderRow(props: TimelineHeaderRowProps) {
   const endTime = (viewEnd * duration) as IOtelSpan['endTime'];
   return (
     <TimelineRow className="TimelineHeaderRow">
-      <TimelineRow.Cell className="ub-flex ub-px2" width={nameColumnWidth}>
-        <h3 className="TimelineHeaderRow--title">
-          Service &amp; {props.useOtelTerms ? 'Span Name' : 'Operation'}
-        </h3>
-        <TimelineCollapser
-          onCollapseAll={onCollapseAll}
-          onExpandAll={onExpandAll}
-          onCollapseOne={onCollapseOne}
-          onExpandOne={onExpandOne}
-        />
+      <TimelineRow.Cell className="ub-flex ub-px2 TimelineHeaderRow--leftCell" width={nameColumnWidth}>
+        <Tooltip title={isNameColumnCollapsed ? 'Show span tree' : 'Hide span tree'}>
+          <button
+            type="button"
+            className="TimelineHeaderRow--leftToggle"
+            onClick={onToggleNameColumn}
+            aria-label={isNameColumnCollapsed ? 'Show span tree' : 'Hide span tree'}
+          >
+            {isNameColumnCollapsed ? <PlusCircleOutlined /> : <MinusCircleOutlined />}
+          </button>
+        </Tooltip>
+        {!isNameColumnCollapsed && (
+          <>
+            <h3 className="TimelineHeaderRow--title">
+              Service &amp; {props.useOtelTerms ? 'Span Name' : 'Operation'}
+            </h3>
+            <TimelineCollapser
+              onCollapseAll={onCollapseAll}
+              onExpandAll={onExpandAll}
+              onCollapseOne={onCollapseOne}
+              onExpandOne={onExpandOne}
+            />
+          </>
+        )}
       </TimelineRow.Cell>
-      <TimelineRow.Cell width={1 - nameColumnWidth}>
+      <TimelineRow.Cell className="TimelineHeaderRow--rightCell" width={1 - nameColumnWidth}>
         <TimelineViewingLayer
           boundsInvalidator={nameColumnWidth}
           updateNextViewRangeTime={updateNextViewRangeTime}
@@ -67,7 +87,7 @@ export default function TimelineHeaderRow(props: TimelineHeaderRowProps) {
         />
         <Ticks numTicks={numTicks} startTime={startTime} endTime={endTime} showLabels />
       </TimelineRow.Cell>
-      <VerticalResizer position={nameColumnWidth} onChange={onColummWidthChange} min={0.15} max={0.85} />
+      <VerticalResizer position={nameColumnWidth} onChange={onColummWidthChange} min={0} max={0.85} />
     </TimelineRow>
   );
 }

@@ -31,3 +31,31 @@ SPDX-License-Identifier: Apache-2.0
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.TimelineHeaderRow--leftCell {
+  align-items: center;
+  gap: 0.4rem;
+  overflow: hidden;
+}
+
+.TimelineHeaderRow--rightCell {
+  position: relative;
+}
+
+.TimelineHeaderRow--leftToggle {
+  background: none;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.1rem;
+  display: inline-flex;
+  align-items: center;
+  font-size: 20px;
+  border-radius: 4px;
+}
+
+.TimelineHeaderRow--leftToggle:hover {
+  color: var(--interactive-primary-hover);
+  border-color: var(--border-default);
+  border-radius: 4px;
+}
