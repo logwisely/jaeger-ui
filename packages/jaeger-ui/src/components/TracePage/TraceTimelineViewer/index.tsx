@@ -1,7 +1,7 @@
 // Copyright (c) 2017 Uber Technologies, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators, Dispatch } from 'redux';
 
@@ -62,6 +62,21 @@ export const TraceTimelineViewerImpl = (props: TProps) => {
     useOtelTerms,
     ...rest
   } = props;
+  const [isNameColumnCollapsed, setIsNameColumnCollapsed] = useState(false);
+  const lastNameColumnWidthRef = useRef(spanNameColumnWidth);
+  const COLLAPSED_WIDTH = 0.025;
+
+  useEffect(() => {
+    if (spanNameColumnWidth <= COLLAPSED_WIDTH && !isNameColumnCollapsed) {
+      setIsNameColumnCollapsed(true);
+    }
+    if (spanNameColumnWidth > COLLAPSED_WIDTH) {
+      lastNameColumnWidthRef.current = spanNameColumnWidth;
+      if (isNameColumnCollapsed) {
+        setIsNameColumnCollapsed(false);
+      }
+    }
+  }, [COLLAPSED_WIDTH, isNameColumnCollapsed, spanNameColumnWidth]);
 
   const collapseAll = useCallback(() => {
     collapseAllAction(trace.spans);
@@ -78,6 +93,38 @@ export const TraceTimelineViewerImpl = (props: TProps) => {
   const expandOne = useCallback(() => {
     expandOneAction(trace.spans);
   }, [expandOneAction, trace.spans]);
+
+  const handleColumnWidthChange = useCallback(
+    (width: number) => {
+      const shouldCollapse = width <= COLLAPSED_WIDTH;
+      if (shouldCollapse) {
+        if (!isNameColumnCollapsed) {
+          lastNameColumnWidthRef.current = spanNameColumnWidth;
+        }
+        setSpanNameColumnWidth(COLLAPSED_WIDTH);
+        setIsNameColumnCollapsed(true);
+        return;
+      }
+      setSpanNameColumnWidth(width);
+      lastNameColumnWidthRef.current = width;
+      if (isNameColumnCollapsed) {
+        setIsNameColumnCollapsed(false);
+      }
+    },
+    [COLLAPSED_WIDTH, isNameColumnCollapsed, setSpanNameColumnWidth, spanNameColumnWidth]
+  );
+
+  const toggleNameColumn = useCallback(() => {
+    if (isNameColumnCollapsed) {
+      const restoreWidth = lastNameColumnWidthRef.current || 0.25;
+      setSpanNameColumnWidth(restoreWidth);
+      setIsNameColumnCollapsed(false);
+    } else {
+      lastNameColumnWidthRef.current = spanNameColumnWidth;
+      setSpanNameColumnWidth(COLLAPSED_WIDTH);
+      setIsNameColumnCollapsed(true);
+    }
+  }, [COLLAPSED_WIDTH, isNameColumnCollapsed, setSpanNameColumnWidth, spanNameColumnWidth]);
 
   useEffect(() => {
     mergeShortcuts({
@@ -96,9 +143,11 @@ export const TraceTimelineViewerImpl = (props: TProps) => {
         numTicks={NUM_TICKS}
         onCollapseAll={collapseAll}
         onCollapseOne={collapseOne}
-        onColummWidthChange={setSpanNameColumnWidth}
+        onColummWidthChange={handleColumnWidthChange}
         onExpandAll={expandAll}
         onExpandOne={expandOne}
+        onToggleNameColumn={toggleNameColumn}
+        isNameColumnCollapsed={isNameColumnCollapsed}
         viewRangeTime={viewRange.time}
         updateNextViewRangeTime={updateNextViewRangeTime}
         updateViewRangeTime={updateViewRangeTime}
