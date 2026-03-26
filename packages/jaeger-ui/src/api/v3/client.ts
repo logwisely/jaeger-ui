@@ -14,6 +14,7 @@ import {
   OperationsResponseSchema,
   ServicesResponseSchema,
 } from './schemas';
+import prefixUrl from '../../utils/prefix-url';
 
 export type AttributeSuggestionQuery = {
   serviceName: string;
@@ -26,7 +27,7 @@ export type AttributeSuggestionQuery = {
 };
 
 export class JaegerClient {
-  private apiRoot = '/api/v3';
+  private apiRoot = prefixUrl('/api/v3');
 
   private buildFindTracesQueryParams(query: AttributeSuggestionQuery): URLSearchParams {
     const params = new URLSearchParams();

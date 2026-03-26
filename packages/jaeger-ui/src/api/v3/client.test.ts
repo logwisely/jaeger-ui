@@ -266,4 +266,17 @@ describe('JaegerClient', () => {
       expect(jaegerClient.fetchSpanNames).toBeInstanceOf(Function);
     });
   });
+
+  it('uses prefixed api root when installed under base path', () => {
+    jest.resetModules();
+    jest.doMock('../../utils/prefix-url', () => ({
+      __esModule: true,
+      default: (value: string) => `/jaeger${value}`,
+    }));
+
+    const { JaegerClient } = require('./client');
+    const prefixedClient = new JaegerClient();
+
+    expect((prefixedClient as any).apiRoot).toBe('/jaeger/api/v3');
+  });
 });
